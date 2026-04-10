@@ -14,7 +14,7 @@ from flask_migrate import Migrate
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
 
 # локальные модели/blueprints
-from models import db, User, Recipe, Category, Favorite, Rating, Comment
+from entities import db, User, Recipe, Category, Favorite, Rating, Comment
 # auth blueprint должен быть в файле auth.py и использовать blueprint bp
 # мы импортируем и регистрируем ниже, чтобы avoid circular imports
 
