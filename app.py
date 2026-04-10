@@ -429,7 +429,7 @@ def add_comment(recipe_id):
     if not text:
         flash('Comment cannot be empty', 'warning')
         return redirect(url_for('recipe_page', recipe_id=recipe_id))
-    db.session.add(Comment(user_id=current_user.id, recipe_id=recipe_id, text=text))
+    db.session.add(Comment(user_id=current_user.id, recipe_id=recipe_id, body=text))
     db.session.commit()
     return redirect(url_for('recipe_page', recipe_id=recipe_id) + '#comments')
 
