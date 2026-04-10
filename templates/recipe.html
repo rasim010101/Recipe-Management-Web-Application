@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}{{ recipe.title }}{% endblock %}
+{% block content %}
+
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+    <li class="breadcrumb-item"><a href="{{ url_for('all_recipes') }}">All Recipes</a></li>
+    <li class="breadcrumb-item active">{{ recipe.title }}</li>
+  </ol>
+</nav>
+
+<div class="row">
+  <div class="col-lg-8">
+    <h1 class="mb-2">{{ recipe.title }}</h1>
+
+    <div class="mb-3 text-muted small">
+      {% if recipe.category %}
+        <span class="badge bg-primary me-2">{{ recipe.category.name }}</span>
+      {% endif %}
+      {% if recipe.author %}
+        <a href="{{ url_for('profile', username=recipe.author.username) }}" class="me-3 text-decoration-none text-muted">👤 {{ recipe.author.username }}</a>
+      {% endif %}
+      <span>📅 {{ recipe.created_at.strftime('%d.%m.%Y') }}</span>
+    </div>
+
+    {% if recipe.image_path %}
+      <img src="/{{ recipe.image_path }}" class="img-fluid rounded mb-4" style="max-height:400px;object-fit:cover;width:100%;" alt="{{ recipe.title }}">
+    {% endif %}
+
+    <!-- Rating -->
+    <div class="card mb-4">
+      <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+        <span>Rating</span>
+        <span>
+          {% if avg_rating %}
+            {% for i in range(1, 6) %}
+              <span class="{{ 'text-warning' if i <= avg_rating|round else 'text-muted' }}" style="font-size:1.1rem;">★</span>
+            {% endfor %}
+            <span id="avgRating" class="ms-1 fw-normal">{{ avg_rating }}</span>/5
+            <small class="text-muted" id="ratingCount">({{ rating_count }} {{ 'rating' if rating_count == 1 else 'ratings' }})</small>
+          {% else %}
+            <span class="text-muted fw-normal" id="noRatingText">No ratings yet</span>
+          {% endif %}
+        </span>
+      </div>
+      <div class="card-body">
+        {% if current_user.is_authenticated and current_user.id != recipe.author_id %}
+          <p class="mb-2 text-muted small">Your rating:</p>
+          <div id="starWidget" data-recipe="{{ recipe.id }}" data-current="{{ user_rating or 0 }}">
+            {% for i in range(1, 6) %}
+              <span class="star-btn fs-2 {{ 'text-warning' if user_rating and i <= user_rating else 'text-muted' }}"
+                    data-value="{{ i }}" style="cursor:pointer; transition: color .1s;">★</span>
+            {% endfor %}
+            <small class="text-muted ms-2" id="userRatingLabel">
+              {% if user_rating %}Your rating: {{ user_rating }}/5{% else %}Click to rate{% endif %}
+            </small>
+          </div>
+        {% elif current_user.is_authenticated %}
+          <p class="text-muted small mb-0">You cannot rate your own recipe.</p>
+        {% else %}
+          <p class="text-muted small mb-0"><a href="{{ url_for('auth.login') }}">Log in</a> to rate this recipe.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Ingredients -->
+    <div class="card mb-4">
+      <div class="card-header fw-bold">Ingredients</div>
+      <div class="card-body">
+        <ul class="mb-0">
+          {% for ing in recipe.ingredients.split(',') %}
+            {% set ing = ing.strip() %}
+            {% if ing %}<li>{{ ing }}</li>{% endif %}
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="card mb-4">
+      <div class="card-header fw-bold">Instructions</div>
+      <div class="card-body">
+        <pre style="white-space:pre-wrap;font-family:inherit;margin:0;">{{ recipe.instructions }}</pre>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="d-flex gap-2 flex-wrap mb-4">
+      {% if current_user.is_authenticated %}
+        <form method="post" action="{{ url_for('toggle_favorite', recipe_id=recipe.id) }}">
+          <button class="btn {{ 'btn-danger' if is_favorited else 'btn-outline-danger' }}">
+            {{ '❤ Remove from Favorites' if is_favorited else '🤍 Add to Favorites' }}
+          </button>
+        </form>
+      {% endif %}
+      {% if current_user.is_authenticated and (current_user.id == recipe.author_id or current_user.is_admin()) %}
+        <a class="btn btn-outline-primary" href="{{ url_for('edit_recipe', recipe_id=recipe.id) }}">✏️ Edit</a>
+        <form method="post" action="{{ url_for('delete_recipe', recipe_id=recipe.id) }}">
+          <button class="btn btn-outline-secondary" onclick="return confirm('Move to trash?')">🗑 Delete</button>
+        </form>
+      {% endif %}
+    </div>
+
+    <!-- Comments -->
+    <div class="card mb-4" id="comments">
+      <div class="card-header fw-bold">Comments <span class="badge bg-secondary">{{ comments|length }}</span></div>
+      <div class="list-group list-group-flush">
+        {% if comments %}
+          {% for c in comments %}
+          <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <a href="{{ url_for('profile', username=c.user.username) }}" class="fw-bold text-decoration-none">{{ c.user.username }}</a>
+                {% if c.user_id == recipe.author_id %}
+                  <span class="badge bg-primary ms-1">Author</span>
+                {% endif %}
+                <small class="text-muted ms-2">{{ c.created_at.strftime('%d.%m.%Y %H:%M') }}</small>
+              </div>
+              {% if current_user.is_authenticated and (current_user.id == c.user_id or current_user.is_admin()) %}
+              <form method="post" action="{{ url_for('delete_comment', comment_id=c.id) }}">
+                <button class="btn btn-sm btn-link text-danger p-0" title="Delete">✕</button>
+              </form>
+              {% endif %}
+            </div>
+            <p class="mb-0 mt-1">{{ c.text }}</p>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="list-group-item text-muted">No comments yet. Be the first!</div>
+        {% endif %}
+      </div>
+      <div class="card-footer">
+        {% if current_user.is_authenticated %}
+          <form method="post" action="{{ url_for('add_comment', recipe_id=recipe.id) }}">
+            <div class="input-group">
+              <input name="text" class="form-control" placeholder="Write a comment…" required maxlength="1000">
+              <button class="btn btn-primary">Post</button>
+            </div>
+          </form>
+        {% else %}
+          <p class="text-muted small mb-0"><a href="{{ url_for('auth.login') }}">Log in</a> to leave a comment.</p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const widget = document.getElementById('starWidget');
+if (widget) {
+  const stars = widget.querySelectorAll('.star-btn');
+  const label = document.getElementById('userRatingLabel');
+  let current = parseInt(widget.dataset.current) || 0;
+
+  function highlight(n) {
+    stars.forEach((s, i) => {
+      s.classList.toggle('text-warning', i < n);
+      s.classList.toggle('text-muted', i >= n);
+    });
+  }
+
+  stars.forEach(star => {
+    star.addEventListener('mouseover', () => highlight(parseInt(star.dataset.value)));
+    star.addEventListener('mouseout', () => highlight(current));
+    star.addEventListener('click', async () => {
+      const val = parseInt(star.dataset.value);
+      const resp = await fetch(`/recipe/${widget.dataset.recipe}/rate`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({value: val})
+      });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      current = data.user_rating;
+      highlight(current);
+      label.textContent = `Your rating: ${current}/5`;
+
+      // Update average display
+      const avgEl = document.getElementById('avgRating');
+      const countEl = document.getElementById('ratingCount');
+      const noRating = document.getElementById('noRatingText');
+      if (noRating) noRating.remove();
+      if (avgEl) {
+        avgEl.textContent = data.avg;
+        countEl.textContent = `(${data.count} ${data.count === 1 ? 'rating' : 'ratings'})`;
+      } else {
+        // First rating — reload to show stars properly
+        location.reload();
+      }
+    });
+  });
+
+  highlight(current);
+}
+</script>
+
+{% endblock %}

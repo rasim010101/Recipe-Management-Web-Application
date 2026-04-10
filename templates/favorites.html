@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}My Favorites{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>❤ My Favorites <span class="badge bg-secondary">{{ recipes|length }}</span></h2>
+  <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">← Back</a>
+</div>
+
+{% if recipes %}
+  <div class="row g-3">
+    {% for r in recipes %}
+    <div class="col-md-4 col-sm-6">
+      <div class="card h-100 shadow-sm">
+        {% if r.image_path %}
+          <img src="/{{ r.image_path }}" class="card-img-top recipe-card-img" alt="{{ r.title }}">
+        {% else %}
+          <div class="recipe-card-img bg-secondary d-flex align-items-center justify-content-center text-white">
+            <span style="font-size:3rem">🍽</span>
+          </div>
+        {% endif %}
+        <div class="card-body">
+          <h5 class="card-title">{{ r.title }}</h5>
+          {% if r.category %}
+            <span class="badge bg-primary mb-2">{{ r.category.name }}</span>
+          {% endif %}
+          <p class="card-text text-muted small">{{ r.ingredients[:80] }}{% if r.ingredients|length > 80 %}…{% endif %}</p>
+        </div>
+        <div class="card-footer bg-white border-0 d-flex justify-content-between align-items-center">
+          <form method="post" action="{{ url_for('toggle_favorite', recipe_id=r.id) }}">
+            <button class="btn btn-sm btn-outline-danger">❌ Remove</button>
+          </form>
+          <a href="{{ url_for('recipe_page', recipe_id=r.id) }}" class="btn btn-sm btn-outline-primary">View</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-info">
+    You have no favorite recipes yet. Open any recipe and click <strong>🤍 Add to Favorites</strong>.
+  </div>
+{% endif %}
+
+{% endblock %}

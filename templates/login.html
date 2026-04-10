@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Log In{% endblock %}
+{% block content %}
+
+<div class="row justify-content-center">
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <h2 class="card-title mb-4">Log In</h2>
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input name="email" type="email" class="form-control" placeholder="example@mail.com" required autofocus>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input name="password" type="password" class="form-control" placeholder="Password" required>
+          </div>
+          <div class="d-grid">
+            <button class="btn btn-primary btn-lg">Log In</button>
+          </div>
+        </form>
+        <hr>
+        <p class="text-center mb-0">Don't have an account? <a href="{{ url_for('auth.register') }}">Register</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

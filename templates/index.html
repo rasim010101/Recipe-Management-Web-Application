@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Search Recipes{% endblock %}
+{% block content %}
+
+<h2 class="mb-3">Find a Recipe</h2>
+<form id="searchForm" class="mb-4">
+  <div class="row g-2">
+    <div class="col-md-4">
+      <input id="ingredients" class="form-control form-control-lg" placeholder="Ingredients: egg, tomato…">
+    </div>
+    <div class="col-md-3">
+      <input id="titleQuery" class="form-control form-control-lg" placeholder="Title: Pasta…">
+    </div>
+    <div class="col-md-2">
+      <select id="category" class="form-select form-select-lg">
+        <option value="">All Categories</option>
+        {% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3 d-grid">
+      <button class="btn btn-primary btn-lg">Search</button>
+    </div>
+  </div>
+</form>
+
+<!-- Search results (hidden by default) -->
+<div id="searchResults" class="d-none">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 id="searchTitle">Search Results</h4>
+    <button class="btn btn-sm btn-outline-secondary" id="clearSearch">✕ Clear</button>
+  </div>
+  <div id="results" class="row g-3"></div>
+</div>
+
+<!-- All recipes (shown by default) -->
+<div id="defaultRecipes">
+  <h4 class="mb-3">All Recipes <span class="badge bg-secondary">{{ recipes|length }}</span></h4>
+  {% if recipes %}
+    <div class="row g-3">
+      {% for r in recipes %}
+      <div class="col-md-4 col-sm-6">
+        <div class="card h-100 shadow-sm">
+          {% if r.image_path %}
+            <img src="/{{ r.image_path }}" class="card-img-top recipe-card-img" alt="{{ r.title }}">
+          {% else %}
+            <div class="recipe-card-img bg-secondary d-flex align-items-center justify-content-center text-white">
+              <span style="font-size:3rem">🍽</span>
+            </div>
+          {% endif %}
+          <div class="card-body">
+            <h5 class="card-title">{{ r.title }}</h5>
+            {% if r.category %}
+              <span class="badge bg-primary mb-2">{{ r.category.name }}</span>
+            {% endif %}
+            <p class="card-text text-muted small">{{ r.ingredients[:80] }}{% if r.ingredients|length > 80 %}…{% endif %}</p>
+            {% if r.author %}
+              <small class="text-muted">👤 <a href="{{ url_for('profile', username=r.author.username) }}" class="text-muted">{{ r.author.username }}</a></small>
+            {% endif %}
+          </div>
+          <div class="card-footer bg-white border-0">
+            <a href="{{ url_for('recipe_page', recipe_id=r.id) }}" class="btn btn-sm btn-outline-primary w-100">View Recipe</a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="alert alert-info">No recipes yet. <a href="{{ url_for('add_recipe') }}">Add the first one!</a></div>
+  {% endif %}
+</div>
+
+<script>
+const form = document.getElementById('searchForm');
+const defaultDiv = document.getElementById('defaultRecipes');
+const searchDiv = document.getElementById('searchResults');
+const resultsDiv = document.getElementById('results');
+const searchTitle = document.getElementById('searchTitle');
+const clearBtn = document.getElementById('clearSearch');
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const ing = document.getElementById('ingredients').value.trim();
+  const title = document.getElementById('titleQuery').value.trim();
+  const cat = document.getElementById('category').value;
+  if (!ing && !title && !cat) { showDefault(); return; }
+
+  const resp = await fetch('/search', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ingredients: ing, title: title, category_id: cat})
+  });
+  const data = await resp.json();
+
+  defaultDiv.classList.add('d-none');
+  searchDiv.classList.remove('d-none');
+  resultsDiv.innerHTML = '';
+
+  if (data.length === 0) {
+    searchTitle.textContent = 'No results found';
+    resultsDiv.innerHTML = '<div class="col-12"><div class="alert alert-warning">No recipes matched your ingredients. Try different ones.</div></div>';
+    return;
+  }
+
+  searchTitle.textContent = `Recipes found: ${data.length}`;
+  data.forEach(r => {
+    const imgHtml = r.image_path
+      ? `<img src="/${r.image_path}" class="card-img-top recipe-card-img" alt="${r.title}">`
+      : `<div class="recipe-card-img bg-secondary d-flex align-items-center justify-content-center text-white"><span style="font-size:3rem">🍽</span></div>`;
+    const matchPct = Math.round(r.score * 100);
+    const badgeColor = matchPct >= 80 ? 'success' : matchPct >= 50 ? 'warning' : 'secondary';
+    const col = document.createElement('div');
+    col.className = 'col-md-4 col-sm-6';
+    col.innerHTML = `
+      <div class="card h-100 shadow-sm">
+        ${imgHtml}
+        <div class="card-body">
+          <h5 class="card-title">${r.title}</h5>
+          <span class="badge bg-${badgeColor} mb-2">Match: ${r.match_count}/${r.total} (${matchPct}%)</span>
+          <p class="card-text text-muted small">${r.ingredients.slice(0,3).join(', ')}${r.ingredients.length > 3 ? '…' : ''}</p>
+        </div>
+        <div class="card-footer bg-white border-0">
+          <a href="/recipe/${r.id}" class="btn btn-sm btn-outline-primary w-100">View Recipe</a>
+        </div>
+      </div>`;
+    resultsDiv.appendChild(col);
+  });
+});
+
+clearBtn.addEventListener('click', () => {
+  document.getElementById('ingredients').value = '';
+  document.getElementById('titleQuery').value = '';
+  document.getElementById('category').value = '';
+  showDefault();
+});
+
+function showDefault() {
+  searchDiv.classList.add('d-none');
+  defaultDiv.classList.remove('d-none');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Trash{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>🗑 Trash</h2>
+  <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">← Back</a>
+</div>
+
+{% if recipes|length == 0 %}
+  <div class="alert alert-info">Trash is empty.</div>
+{% else %}
+  <div class="list-group">
+    {% for r in recipes %}
+    <div class="list-group-item">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <strong>{{ r.title }}</strong>
+          {% if r.category %}<span class="badge bg-secondary ms-2">{{ r.category.name }}</span>{% endif %}
+          <br>
+          <small class="text-muted">Deleted: {{ r.deleted_at.strftime('%d.%m.%Y %H:%M') if r.deleted_at else '—' }}</small>
+        </div>
+        <div class="d-flex gap-2">
+          <form method="post" action="{{ url_for('trash_restore', recipe_id=r.id) }}">
+            <button class="btn btn-sm btn-success">♻️ Restore</button>
+          </form>
+          {% if current_user.is_admin() %}
+          <form method="post" action="{{ url_for('trash_permanent', recipe_id=r.id) }}">
+            <button class="btn btn-sm btn-danger" onclick="return confirm('Permanently delete? This cannot be undone!')">❌ Delete Forever</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% endblock %}

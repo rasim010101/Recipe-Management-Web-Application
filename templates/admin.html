@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Все рецепты</h2>
+{% for r in recipes %}
+  <div class="d-flex align-items-center mb-2">
+    {% if r.image_path %}<img src="/{{ r.image_path }}" class="thumb me-2">{% endif %}
+    <div><a href="{{ url_for('recipe_page', recipe_id=r.id) }}">{{ r.title }}</a></div>
+  </div>
+{% endfor %}
+{% endblock %}

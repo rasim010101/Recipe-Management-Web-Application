@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/99670/Documents/**)",
+      "Bash(powershell -Command \"Compress-Archive -Path ''backend'' -DestinationPath ''backend_ready.zip'' -Force\")"
+    ]
+  }
+}
