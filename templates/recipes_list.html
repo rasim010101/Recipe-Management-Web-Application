@@ -1,63 +1,115 @@
 {% extends "base.html" %}
-{% block title %}All Recipes{% endblock %}
+{% from '_pagination.html' import render_pagination %}
+{% block title %}All Recipes — RecipeHub{% endblock %}
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h2>All Recipes <span class="badge bg-secondary" id="recipeCount">{{ recipes|length }}</span></h2>
+<div class="page-header">
+  <h1 class="page-header-title">
+    📚 All Recipes
+    <span class="count-badge" id="recipeCount">{{ recipes|length }}</span>
+  </h1>
   {% if current_user.is_authenticated %}
-    <a href="{{ url_for('add_recipe') }}" class="btn btn-primary">+ Add Recipe</a>
+    <a href="{{ url_for('add_recipe') }}" class="btn-accent">+ Add Recipe</a>
   {% endif %}
 </div>
 
-<div class="mb-3" style="max-width:400px;">
-  <input id="titleFilter" class="form-control" placeholder="🔍 Filter by title…" oninput="filterRecipes()">
+<!-- Filter bar -->
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+  <input id="titleFilter" class="form-input" style="max-width:240px;"
+         placeholder="🔍 Filter by title…" oninput="filterRecipes()">
+
+  <!-- Sort -->
+  <div class="d-flex gap-1" style="margin-left:auto;">
+    <span style="font-size:.8rem;color:var(--text-muted);align-self:center;">Sort:</span>
+    {% for label, val in [('Newest','newest'),('Oldest','oldest'),('Top rated','rating')] %}
+      <a href="{{ url_for('all_recipes', sort=val, cat=active_cat) }}"
+         class="page-btn {{ 'active' if sort_by == val else '' }}"
+         style="font-size:.78rem;height:30px;padding:0 .6rem;">{{ label }}</a>
+    {% endfor %}
+  </div>
 </div>
 
+<!-- Category tabs -->
 {% if categories %}
-<div class="mb-4 d-flex flex-wrap gap-2">
-  <a href="{{ url_for('all_recipes') }}" class="btn btn-sm {{ 'btn-secondary' if not active_cat else 'btn-outline-secondary' }}">All</a>
+<div class="d-flex flex-wrap gap-2 mb-4">
+  <a href="{{ url_for('all_recipes', sort=sort_by) }}"
+     class="btn-{{ 'accent' if not active_cat else 'ghost' }}"
+     style="font-size:.85rem;">All</a>
   {% for c in categories %}
-    <a href="{{ url_for('all_recipes') }}?cat={{ c.id }}" class="btn btn-sm {{ 'btn-primary' if active_cat == c.id else 'btn-outline-primary' }}">{{ c.name }}</a>
+    <a href="{{ url_for('all_recipes', cat=c.id, sort=sort_by) }}"
+       class="btn-{{ 'accent' if active_cat == c.id else 'ghost' }}"
+       style="font-size:.85rem;">{{ c.name }}</a>
   {% endfor %}
 </div>
 {% endif %}
 
 {% if recipes %}
-  <div class="row g-3">
+  <div class="row g-3" id="recipesGrid">
     {% for r in recipes %}
-    <div class="col-md-4 col-sm-6 recipe-card-col" data-title="{{ r.title | lower }}">
-      <div class="card h-100 shadow-sm">
-        {% if r.image_path %}
-          <img src="/{{ r.image_path }}" class="card-img-top recipe-card-img" alt="{{ r.title }}">
-        {% else %}
-          <div class="recipe-card-img bg-secondary d-flex align-items-center justify-content-center text-white">
-            <span style="font-size:3rem">🍽</span>
-          </div>
-        {% endif %}
-        <div class="card-body">
-          <h5 class="card-title">{{ r.title }}</h5>
-          {% if r.category %}
-            <span class="badge bg-primary mb-2">{{ r.category.name }}</span>
-          {% endif %}
-          <p class="card-text text-muted small">{{ r.ingredients[:80] }}{% if r.ingredients|length > 80 %}…{% endif %}</p>
-          {% if r.author %}
-            <small class="text-muted">👤 <a href="{{ url_for('profile', username=r.author.username) }}" class="text-muted">{{ r.author.username }}</a></small>
+    <div class="col-xl-3 col-lg-4 col-sm-6 recipe-card-col recipe-card-anim"
+         data-title="{{ r.title | lower }}">
+      <div class="recipe-card">
+        <div class="recipe-card-img-wrap">
+          {% if r.image_path %}
+            <img src="/{{ r.image_path }}" alt="{{ r.title }}">
+          {% else %}
+            <div class="recipe-card-no-img">🍽</div>
           {% endif %}
         </div>
-        <div class="card-footer bg-white border-0 d-flex justify-content-between align-items-center">
-          <small class="text-muted">{{ r.created_at.strftime('%d.%m.%Y') }}</small>
-          <a href="{{ url_for('recipe_page', recipe_id=r.id) }}" class="btn btn-sm btn-outline-primary">View</a>
+        <div class="recipe-card-body">
+          <div class="recipe-card-title">{{ r.title }}</div>
+          <div class="recipe-card-meta">
+            {% if r.category %}
+              <span class="cat-badge">{{ r.category.name }}</span>
+            {% endif %}
+            {% if r.author %}
+              <span>👤 <a href="{{ url_for('profile', username=r.author.username) }}"
+                          style="color:var(--text-muted);text-decoration:none;">
+                {{ r.author.username }}</a></span>
+            {% endif %}
+          </div>
+          <p style="font-size:.82rem;color:var(--text-muted);margin:0;flex:1;">
+            {{ r.ingredients[:70] }}{% if r.ingredients|length > 70 %}…{% endif %}
+          </p>
+        </div>
+        <div class="recipe-card-footer">
+          <small style="color:var(--text-light);font-size:.75rem;">
+            {{ r.created_at.strftime('%d.%m.%Y') }}
+          </small>
+          <a href="{{ url_for('recipe_page', recipe_id=r.id) }}" class="btn-view">View →</a>
         </div>
       </div>
     </div>
     {% endfor %}
   </div>
+
+  <!-- No results msg (hidden by JS filter) -->
+  <div id="noFilterResults" class="d-none">
+    <div class="empty-state">
+      <div class="empty-state-icon">🔍</div>
+      <h5>No recipes match your filter</h5>
+      <p>Try a different title.</p>
+    </div>
+  </div>
+
+  {{ render_pagination(pagination, 'all_recipes', cat=active_cat, sort=sort_by) }}
+
+
 {% else %}
-  <div class="alert alert-info">
-    No recipes yet. {% if current_user.is_authenticated %}<a href="{{ url_for('add_recipe') }}">Add the first one!</a>{% endif %}
+  <div class="empty-state">
+    <div class="empty-state-icon">🍳</div>
+    <h5>No recipes yet</h5>
+    {% if current_user.is_authenticated %}
+      <a href="{{ url_for('add_recipe') }}" class="btn-accent" style="display:inline-block;margin-top:.5rem;">
+        + Add First Recipe
+      </a>
+    {% endif %}
   </div>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
 <script>
 function filterRecipes() {
   const q = document.getElementById('titleFilter').value.toLowerCase().trim();
@@ -69,7 +121,8 @@ function filterRecipes() {
     if (match) visible++;
   });
   document.getElementById('recipeCount').textContent = visible;
+  const noRes = document.getElementById('noFilterResults');
+  if (noRes) noRes.classList.toggle('d-none', visible > 0 || !q);
 }
 </script>
-
 {% endblock %}

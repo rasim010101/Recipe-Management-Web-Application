@@ -1,38 +1,63 @@
 {% extends "base.html" %}
-{% block title %}Trash{% endblock %}
+{% block title %}Trash — RecipeHub{% endblock %}
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h2>🗑 Trash</h2>
-  <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">← Back</a>
+<div class="page-header">
+  <h1 class="page-header-title">
+    🗑 Trash
+    <span class="count-badge">{{ recipes|length }}</span>
+  </h1>
+  <a href="{{ url_for('index') }}" class="btn-ghost" style="font-size:.85rem;">← Back</a>
 </div>
 
-{% if recipes|length == 0 %}
-  <div class="alert alert-info">Trash is empty.</div>
-{% else %}
-  <div class="list-group">
-    {% for r in recipes %}
-    <div class="list-group-item">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <strong>{{ r.title }}</strong>
-          {% if r.category %}<span class="badge bg-secondary ms-2">{{ r.category.name }}</span>{% endif %}
-          <br>
-          <small class="text-muted">Deleted: {{ r.deleted_at.strftime('%d.%m.%Y %H:%M') if r.deleted_at else '—' }}</small>
+{% if recipes %}
+  <div class="content-block">
+    <div class="content-block-header">
+      Deleted recipes — restore or permanently remove
+    </div>
+    <div class="content-block-body" style="padding:0;">
+      {% for r in recipes %}
+      <div style="display:flex;align-items:center;justify-content:space-between;
+                  padding:.9rem 1.25rem;gap:1rem;flex-wrap:wrap;
+                  border-bottom:1px solid var(--border-light);">
+        <div style="min-width:0;">
+          <div style="font-weight:600;font-size:.95rem;color:var(--text);">{{ r.title }}</div>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.2rem;align-items:center;">
+            {% if r.category %}
+              <span class="cat-badge">{{ r.category.name }}</span>
+            {% endif %}
+            <span style="font-size:.78rem;color:var(--text-light);">
+              {% if r.author %}👤 {{ r.author.username }}{% endif %}
+            </span>
+          </div>
         </div>
-        <div class="d-flex gap-2">
-          <form method="post" action="{{ url_for('trash_restore', recipe_id=r.id) }}">
-            <button class="btn btn-sm btn-success">♻️ Restore</button>
+        <div style="display:flex;gap:.5rem;flex-shrink:0;">
+          <form method="post" action="{{ url_for('trash_restore', recipe_id=r.id) }}"
+                style="display:contents">
+            <button class="btn-ghost" style="font-size:.83rem;padding:.35rem .8rem;
+                           color:#15803D;border-color:#BBF7D0;">
+              ♻ Restore
+            </button>
           </form>
           {% if current_user.is_admin() %}
-          <form method="post" action="{{ url_for('trash_permanent', recipe_id=r.id) }}">
-            <button class="btn btn-sm btn-danger" onclick="return confirm('Permanently delete? This cannot be undone!')">❌ Delete Forever</button>
+          <form method="post" action="{{ url_for('trash_permanent', recipe_id=r.id) }}"
+                style="display:contents">
+            <button class="btn-danger-soft" style="font-size:.83rem;padding:.35rem .8rem;"
+                    onclick="return confirm('Permanently delete "{{ r.title }}"? This cannot be undone!')">
+              ✕ Delete Forever
+            </button>
           </form>
           {% endif %}
         </div>
       </div>
+      {% endfor %}
     </div>
-    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">🗑</div>
+    <h5>Trash is empty</h5>
+    <p>Deleted recipes will appear here.</p>
   </div>
 {% endif %}
 

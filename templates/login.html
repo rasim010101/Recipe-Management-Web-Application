@@ -1,30 +1,60 @@
 {% extends "base.html" %}
-{% block title %}Log In{% endblock %}
+{% block title %}Log In — RecipeHub{% endblock %}
 {% block content %}
 
-<div class="row justify-content-center">
-  <div class="col-md-4">
-    <div class="card shadow-sm">
-      <div class="card-body p-4">
-        <h2 class="card-title mb-4">Log In</h2>
-        <form method="post">
-          <div class="mb-3">
-            <label class="form-label">Email</label>
-            <input name="email" type="email" class="form-control" placeholder="example@mail.com" required autofocus>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Password</label>
-            <input name="password" type="password" class="form-control" placeholder="Password" required>
-          </div>
-          <div class="d-grid">
-            <button class="btn btn-primary btn-lg">Log In</button>
-          </div>
-        </form>
-        <hr>
-        <p class="text-center mb-0">Don't have an account? <a href="{{ url_for('auth.register') }}">Register</a></p>
-      </div>
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">🍳</div>
+      <h1 class="auth-title">Welcome back</h1>
+      <p class="auth-subtitle">Sign in to your RecipeHub account</p>
     </div>
+
+    <form method="post" id="loginForm" novalidate>
+      <div class="form-group-modern">
+        <label class="form-label-modern">Email</label>
+        <input name="email" type="email" id="loginEmail" class="form-input"
+               placeholder="you@example.com" required autofocus>
+        <div class="field-error" id="emailErr">Please enter a valid email address.</div>
+      </div>
+      <div class="form-group-modern">
+        <label class="form-label-modern">Password</label>
+        <input name="password" type="password" id="loginPwd" class="form-input"
+               placeholder="Your password" required>
+        <div class="field-error" id="pwdErr">Password is required.</div>
+      </div>
+      <button type="submit" class="btn-submit" id="loginBtn">Log In →</button>
+    </form>
+
+    <div class="auth-divider"><span>or</span></div>
+    <p class="auth-link-row">
+      Don't have an account? <a href="{{ url_for('auth.register') }}">Register free</a>
+    </p>
   </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+  let valid = true;
+  const email = document.getElementById('loginEmail');
+  const pwd   = document.getElementById('loginPwd');
+
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim());
+  email.classList.toggle('is-invalid', !emailOk);
+  document.getElementById('emailErr').classList.toggle('visible', !emailOk);
+  if (!emailOk) valid = false;
+
+  const pwdOk = pwd.value.length > 0;
+  pwd.classList.toggle('is-invalid', !pwdOk);
+  document.getElementById('pwdErr').classList.toggle('visible', !pwdOk);
+  if (!pwdOk) valid = false;
+
+  if (!valid) { e.preventDefault(); return; }
+  document.getElementById('loginBtn').textContent = 'Logging in…';
+  document.getElementById('loginBtn').disabled = true;
+});
+</script>
 {% endblock %}

@@ -1,0 +1,29 @@
+# Environment secrets — никогда не пушить!
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+env/
+
+# Flask / SQLite
+instance/recipes.sqlite
+instance/*.sqlite
+
+# Uploads (пользовательские файлы)
+static/uploads/*
+!static/uploads/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

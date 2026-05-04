@@ -1,61 +1,90 @@
 {% extends "base.html" %}
-{% block title %}Profile Settings{% endblock %}
+{% block title %}Profile Settings — RecipeHub{% endblock %}
 {% block content %}
 
 <div class="row justify-content-center">
-  <div class="col-md-6">
-    <div class="card shadow-sm">
-      <div class="card-body p-4">
-        <h2 class="mb-4">⚙ Profile Settings</h2>
-        <form method="post" enctype="multipart/form-data">
+  <div class="col-lg-6 col-md-8">
+    <div class="form-card">
+      <h1 class="form-page-title">
+        ⚙ Profile <span>Settings</span>
+      </h1>
 
-          <div class="mb-4">
-            <label class="form-label fw-bold">Profile Photo</label>
-            <div class="d-flex align-items-center gap-3 mb-2">
-              {% if current_user.avatar_path %}
-                <img src="/{{ current_user.avatar_path }}" id="avatarPreview"
-                     class="rounded-circle" style="width:80px;height:80px;object-fit:cover;">
-              {% else %}
-                <div id="avatarPreview" class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center"
-                     style="width:80px;height:80px;font-size:2rem;">
-                  {{ current_user.username[0].upper() }}
-                </div>
-              {% endif %}
-              <div>
-                <input type="file" name="avatar" class="form-control" accept="image/*" id="avatarInput">
-                <small class="text-muted">JPG, PNG, GIF — max 2 MB</small>
+      <form method="post" enctype="multipart/form-data">
+
+        <!-- Avatar -->
+        <div class="form-group-modern">
+          <label class="form-label-modern">Profile Photo</label>
+          <div class="d-flex align-items-center gap-3">
+            {% if current_user.avatar_path %}
+              <img id="avatarPreview" src="/{{ current_user.avatar_path }}"
+                   class="rounded-circle"
+                   style="width:72px;height:72px;object-fit:cover;border:3px solid var(--accent-pale);">
+            {% else %}
+              <div id="avatarPreview"
+                   style="width:72px;height:72px;border-radius:50%;background:var(--accent);
+                          color:#fff;font-size:1.75rem;font-weight:800;
+                          display:flex;align-items:center;justify-content:center;
+                          border:3px solid var(--accent-pale);">
+                {{ current_user.username[0].upper() }}
+              </div>
+            {% endif %}
+            <div>
+              <label class="btn-ghost" style="cursor:pointer;display:inline-block;">
+                📷 Choose photo
+                <input type="file" name="avatar" accept="image/*" id="avatarInput"
+                       style="display:none;">
+              </label>
+              <div style="font-size:.78rem;color:var(--text-muted);margin-top:.35rem;">
+                JPG, PNG, GIF · max 2 MB
               </div>
             </div>
           </div>
+        </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-bold">Username</label>
-            <input name="username" class="form-control" value="{{ current_user.username }}" required>
-          </div>
+        <!-- Username -->
+        <div class="form-group-modern">
+          <label class="form-label-modern">Username</label>
+          <input name="username" class="form-input"
+                 value="{{ current_user.username }}" required>
+        </div>
 
-          <div class="d-flex gap-2 mt-4">
-            <button class="btn btn-primary">Save Changes</button>
-            <a href="{{ url_for('profile', username=current_user.username) }}" class="btn btn-outline-secondary">Cancel</a>
-          </div>
-        </form>
-      </div>
+        <!-- Bio -->
+        <div class="form-group-modern">
+          <label class="form-label-modern">Bio <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+          <textarea name="bio" class="form-input" rows="3"
+                    placeholder="Tell something about yourself…"
+                    style="resize:vertical;">{{ current_user.bio or '' }}</textarea>
+        </div>
+
+        <div class="d-flex gap-2 mt-3">
+          <button type="submit" class="btn-accent" style="flex:1;">Save Changes</button>
+          <a href="{{ url_for('profile', username=current_user.username) }}" class="btn-ghost">Cancel</a>
+        </div>
+
+      </form>
     </div>
   </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
 <script>
-// Live preview of selected avatar
 document.getElementById('avatarInput').addEventListener('change', function () {
   const file = this.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
-    const preview = document.getElementById('avatarPreview');
-    preview.outerHTML = `<img src="${e.target.result}" id="avatarPreview" class="rounded-circle"
-      style="width:80px;height:80px;object-fit:cover;">`;
+    const wrap = document.getElementById('avatarPreview');
+    // Replace with img tag if it was a div
+    const img = document.createElement('img');
+    img.id = 'avatarPreview';
+    img.src = e.target.result;
+    img.className = 'rounded-circle';
+    img.style.cssText = 'width:72px;height:72px;object-fit:cover;border:3px solid var(--accent-pale);';
+    wrap.replaceWith(img);
   };
   reader.readAsDataURL(file);
 });
 </script>
-
 {% endblock %}

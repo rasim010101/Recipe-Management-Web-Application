@@ -1,125 +1,292 @@
 {% extends "base.html" %}
-{% block title %}Search Recipes{% endblock %}
+{% block title %}RecipeHub — Discover Great Recipes{% endblock %}
 {% block content %}
 
-<h2 class="mb-3">Find a Recipe</h2>
-<form id="searchForm" class="mb-4">
-  <div class="row g-2">
-    <div class="col-md-4">
-      <input id="ingredients" class="form-control form-control-lg" placeholder="Ingredients: egg, tomato…">
+<!-- ====================================================
+     HERO + SEARCH
+     ==================================================== -->
+<div class="hero-section">
+  <div class="row align-items-center g-4">
+    <div class="col-lg-6">
+      <p class="hero-eyebrow">🍳 Welcome to RecipeHub</p>
+      <h1 class="hero-title">
+        Find your next<br><span>favourite recipe</span>
+      </h1>
+      <p class="hero-sub">
+        Search by ingredients, browse by category,<br>
+        or get inspired by top-rated dishes.
+      </p>
+
+      <!-- Stats row -->
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <span class="hero-stat-val">{{ total_recipes }}</span>
+          <span class="hero-stat-label">Recipes</span>
+        </div>
+        <div class="hero-stat-divider"></div>
+        <div class="hero-stat">
+          <span class="hero-stat-val">{{ total_members }}</span>
+          <span class="hero-stat-label">Members</span>
+        </div>
+        <div class="hero-stat-divider"></div>
+        <div class="hero-stat">
+          <span class="hero-stat-val">{{ total_cats }}</span>
+          <span class="hero-stat-label">Categories</span>
+        </div>
+      </div>
     </div>
-    <div class="col-md-3">
-      <input id="titleQuery" class="form-control form-control-lg" placeholder="Title: Pasta…">
-    </div>
-    <div class="col-md-2">
-      <select id="category" class="form-select form-select-lg">
-        <option value="">All Categories</option>
-        {% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
-      </select>
-    </div>
-    <div class="col-md-3 d-grid">
-      <button class="btn btn-primary btn-lg">Search</button>
+
+    <div class="col-lg-6">
+      <!-- Search card -->
+      <div class="search-bar-wrap">
+        <p style="color:rgba(255,255,255,.5);font-size:.8rem;font-weight:600;
+                  text-transform:uppercase;letter-spacing:.08em;margin-bottom:.9rem;">
+          Quick Search
+        </p>
+        <form id="searchForm">
+          <div class="d-flex flex-column gap-2">
+            <input id="ingredients" class="form-control search-input"
+                   placeholder="🥕 Ingredients: egg, tomato…">
+            <input id="titleQuery"  class="form-control search-input"
+                   placeholder="🔍 Recipe title: Pasta…">
+            <select id="category" class="form-select search-select">
+              <option value="">📂 All categories</option>
+              {% for c in categories %}
+                <option value="{{ c.obj.id }}">{{ c.obj.name }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn-search" type="submit" id="searchBtn">
+              <span class="btn-search-text">🔍 Search Recipes</span>
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
-</form>
+</div>
 
-<!-- Search results (hidden by default) -->
-<div id="searchResults" class="d-none">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 id="searchTitle">Search Results</h4>
-    <button class="btn btn-sm btn-outline-secondary" id="clearSearch">✕ Clear</button>
+<!-- ====================================================
+     SEARCH RESULTS (hidden by default)
+     ==================================================== -->
+<div id="searchResults" class="d-none" style="margin-top:2rem;">
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <h2 class="section-title mb-0" id="searchTitle">Results</h2>
+    <button class="btn-ghost" id="clearSearch" style="font-size:.85rem;">✕ Clear</button>
   </div>
   <div id="results" class="row g-3"></div>
 </div>
 
-<!-- All recipes (shown by default) -->
-<div id="defaultRecipes">
-  <h4 class="mb-3">All Recipes <span class="badge bg-secondary">{{ recipes|length }}</span></h4>
-  {% if recipes %}
-    <div class="row g-3">
-      {% for r in recipes %}
-      <div class="col-md-4 col-sm-6">
-        <div class="card h-100 shadow-sm">
+<!-- ====================================================
+     CATEGORIES GRID
+     ==================================================== -->
+<div id="mainContent">
+
+{% if categories %}
+<section class="landing-section">
+  <div class="landing-section-header">
+    <h2 class="section-title mb-0">Browse by Category</h2>
+    <a href="{{ url_for('all_recipes') }}" class="section-link">View all →</a>
+  </div>
+  <div class="row g-3">
+    {% for c in categories %}
+    <div class="col-lg-3 col-md-4 col-6">
+      <a href="{{ url_for('all_recipes') }}?cat={{ c.obj.id }}"
+         class="category-card text-decoration-none">
+        <div class="category-card-icon">
+          {# simple colour cycle based on index #}
+          {% set icons = ['🥗','🍲','🍰','🍕','🥩','🥘','🍜','🥪','🍣','🥞'] %}
+          {{ icons[loop.index0 % icons|length] }}
+        </div>
+        <div class="category-card-body">
+          <div class="category-card-name">{{ c.obj.name }}</div>
+          <div class="category-card-count">{{ c.count }} recipe{{ 's' if c.count != 1 else '' }}</div>
+        </div>
+        <span class="category-card-arrow">›</span>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<!-- ====================================================
+     LATEST RECIPES
+     ==================================================== -->
+{% if latest %}
+<section class="landing-section">
+  <div class="landing-section-header">
+    <h2 class="section-title mb-0">🆕 Just Added</h2>
+    <a href="{{ url_for('all_recipes') }}?sort=newest" class="section-link">See all →</a>
+  </div>
+  <div class="row g-3">
+    {% for r in latest %}
+    <div class="col-xl-2 col-lg-3 col-md-4 col-6 recipe-card-anim">
+      <div class="recipe-card">
+        <div class="recipe-card-img-wrap" style="height:150px;">
           {% if r.image_path %}
-            <img src="/{{ r.image_path }}" class="card-img-top recipe-card-img" alt="{{ r.title }}">
+            <img src="/{{ r.image_path }}" alt="{{ r.title }}">
           {% else %}
-            <div class="recipe-card-img bg-secondary d-flex align-items-center justify-content-center text-white">
-              <span style="font-size:3rem">🍽</span>
-            </div>
+            <div class="recipe-card-no-img" style="height:150px;font-size:2.5rem;">🍽</div>
           {% endif %}
-          <div class="card-body">
-            <h5 class="card-title">{{ r.title }}</h5>
+        </div>
+        <div class="recipe-card-body" style="padding:.85rem 1rem;">
+          <div class="recipe-card-title" style="font-size:.92rem;">{{ r.title }}</div>
+          <div class="recipe-card-meta" style="margin-top:.3rem;">
             {% if r.category %}
-              <span class="badge bg-primary mb-2">{{ r.category.name }}</span>
+              <span class="cat-badge" style="font-size:.68rem;">{{ r.category.name }}</span>
             {% endif %}
-            <p class="card-text text-muted small">{{ r.ingredients[:80] }}{% if r.ingredients|length > 80 %}…{% endif %}</p>
-            {% if r.author %}
-              <small class="text-muted">👤 <a href="{{ url_for('profile', username=r.author.username) }}" class="text-muted">{{ r.author.username }}</a></small>
-            {% endif %}
-          </div>
-          <div class="card-footer bg-white border-0">
-            <a href="{{ url_for('recipe_page', recipe_id=r.id) }}" class="btn btn-sm btn-outline-primary w-100">View Recipe</a>
           </div>
         </div>
+        <div class="recipe-card-footer" style="padding:.65rem 1rem;">
+          <small style="color:var(--text-light);font-size:.72rem;">
+            {{ r.created_at.strftime('%d.%m.%Y') }}
+          </small>
+          <a href="{{ url_for('recipe_page', recipe_id=r.id) }}" class="btn-view"
+             style="font-size:.75rem;padding:.25rem .6rem;">View →</a>
+        </div>
       </div>
-      {% endfor %}
     </div>
-  {% else %}
-    <div class="alert alert-info">No recipes yet. <a href="{{ url_for('add_recipe') }}">Add the first one!</a></div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<!-- ====================================================
+     TOP RATED
+     ==================================================== -->
+{% if top_rated %}
+<section class="landing-section">
+  <div class="landing-section-header">
+    <h2 class="section-title mb-0">⭐ Top Rated</h2>
+    <a href="{{ url_for('all_recipes') }}?sort=rating" class="section-link">See all →</a>
+  </div>
+  <div class="row g-3">
+    {% for r in top_rated %}
+    <div class="col-xl-2 col-lg-3 col-md-4 col-6 recipe-card-anim">
+      <div class="recipe-card" style="position:relative;">
+        <!-- rank badge -->
+        <div class="rank-badge">{{ loop.index }}</div>
+        <div class="recipe-card-img-wrap" style="height:150px;">
+          {% if r.image_path %}
+            <img src="/{{ r.image_path }}" alt="{{ r.title }}">
+          {% else %}
+            <div class="recipe-card-no-img" style="height:150px;font-size:2.5rem;">🍽</div>
+          {% endif %}
+        </div>
+        <div class="recipe-card-body" style="padding:.85rem 1rem;">
+          <div class="recipe-card-title" style="font-size:.92rem;">{{ r.title }}</div>
+          <div class="recipe-card-meta" style="margin-top:.3rem;">
+            {% if r.avg_rating %}
+              <span style="color:var(--warning);font-size:.82rem;font-weight:700;">
+                ★ {{ r.avg_rating }}
+              </span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="recipe-card-footer" style="padding:.65rem 1rem;">
+          <span></span>
+          <a href="{{ url_for('recipe_page', recipe_id=r.id) }}" class="btn-view"
+             style="font-size:.75rem;padding:.25rem .6rem;">View →</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<!-- Empty state if nothing at all -->
+{% if not latest and not top_rated %}
+<div class="empty-state" style="margin-top:2rem;">
+  <div class="empty-state-icon">🍳</div>
+  <h5>No recipes yet</h5>
+  <p>Be the first to share something delicious!</p>
+  {% if current_user.is_authenticated %}
+    <a href="{{ url_for('add_recipe') }}" class="btn-accent"
+       style="display:inline-block;margin-top:.5rem;">+ Add First Recipe</a>
   {% endif %}
 </div>
+{% endif %}
 
+</div>{# /mainContent #}
+
+{% endblock %}
+
+{% block scripts %}
 <script>
-const form = document.getElementById('searchForm');
-const defaultDiv = document.getElementById('defaultRecipes');
-const searchDiv = document.getElementById('searchResults');
-const resultsDiv = document.getElementById('results');
+const form        = document.getElementById('searchForm');
+const mainContent = document.getElementById('mainContent');
+const searchDiv   = document.getElementById('searchResults');
+const resultsDiv  = document.getElementById('results');
 const searchTitle = document.getElementById('searchTitle');
-const clearBtn = document.getElementById('clearSearch');
+const clearBtn    = document.getElementById('clearSearch');
+const searchBtn   = document.getElementById('searchBtn');
 
 form.addEventListener('submit', async e => {
   e.preventDefault();
-  const ing = document.getElementById('ingredients').value.trim();
+  const ing   = document.getElementById('ingredients').value.trim();
   const title = document.getElementById('titleQuery').value.trim();
-  const cat = document.getElementById('category').value;
+  const cat   = document.getElementById('category').value;
   if (!ing && !title && !cat) { showDefault(); return; }
+
+  searchBtn.classList.add('loading');
+  searchBtn.disabled = true;
 
   const resp = await fetch('/search', {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ingredients: ing, title: title, category_id: cat})
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ingredients: ing, title, category_id: cat})
   });
   const data = await resp.json();
 
-  defaultDiv.classList.add('d-none');
+  searchBtn.classList.remove('loading');
+  searchBtn.disabled = false;
+
+  mainContent.classList.add('d-none');
   searchDiv.classList.remove('d-none');
   resultsDiv.innerHTML = '';
 
-  if (data.length === 0) {
-    searchTitle.textContent = 'No results found';
-    resultsDiv.innerHTML = '<div class="col-12"><div class="alert alert-warning">No recipes matched your ingredients. Try different ones.</div></div>';
+  if (!data.length) {
+    searchTitle.innerHTML = 'No recipes found';
+    resultsDiv.innerHTML = `
+      <div class="col-12">
+        <div class="empty-state">
+          <div class="empty-state-icon">🔍</div>
+          <h5>No matches</h5>
+          <p>Try different ingredients or a shorter title.</p>
+        </div>
+      </div>`;
     return;
   }
 
-  searchTitle.textContent = `Recipes found: ${data.length}`;
-  data.forEach(r => {
+  searchTitle.innerHTML = `Results <span class="count-badge">${data.length}</span>`;
+  data.forEach((r, i) => {
     const imgHtml = r.image_path
-      ? `<img src="/${r.image_path}" class="card-img-top recipe-card-img" alt="${r.title}">`
-      : `<div class="recipe-card-img bg-secondary d-flex align-items-center justify-content-center text-white"><span style="font-size:3rem">🍽</span></div>`;
-    const matchPct = Math.round(r.score * 100);
-    const badgeColor = matchPct >= 80 ? 'success' : matchPct >= 50 ? 'warning' : 'secondary';
+      ? `<img src="/${r.image_path}" alt="${r.title}">`
+      : `<div class="recipe-card-no-img">🍽</div>`;
+    const pct = Math.round(r.score * 100);
+    const matchClass = pct >= 80 ? 'match-high' : pct >= 50 ? 'match-medium' : 'match-low';
+    const catHtml = r.category
+      ? `<span class="cat-badge">${r.category}</span>` : '';
     const col = document.createElement('div');
-    col.className = 'col-md-4 col-sm-6';
+    col.className = 'col-xl-3 col-lg-4 col-sm-6 recipe-card-anim';
+    col.style.animationDelay = `${i * 0.04}s`;
     col.innerHTML = `
-      <div class="card h-100 shadow-sm">
-        ${imgHtml}
-        <div class="card-body">
-          <h5 class="card-title">${r.title}</h5>
-          <span class="badge bg-${badgeColor} mb-2">Match: ${r.match_count}/${r.total} (${matchPct}%)</span>
-          <p class="card-text text-muted small">${r.ingredients.slice(0,3).join(', ')}${r.ingredients.length > 3 ? '…' : ''}</p>
+      <div class="recipe-card">
+        <div class="recipe-card-img-wrap">${imgHtml}</div>
+        <div class="recipe-card-body">
+          <div class="recipe-card-title">${r.title}</div>
+          <div class="recipe-card-meta">
+            ${catHtml}
+            <span class="match-badge ${matchClass}">Match ${pct}%</span>
+          </div>
+          <p style="font-size:.82rem;color:var(--text-muted);margin:0;">
+            ${r.ingredients.slice(0,3).join(', ')}${r.ingredients.length > 3 ? '…' : ''}
+          </p>
         </div>
-        <div class="card-footer bg-white border-0">
-          <a href="/recipe/${r.id}" class="btn btn-sm btn-outline-primary w-100">View Recipe</a>
+        <div class="recipe-card-footer">
+          <span></span>
+          <a href="/recipe/${r.id}" class="btn-view">View →</a>
         </div>
       </div>`;
     resultsDiv.appendChild(col);
@@ -128,14 +295,14 @@ form.addEventListener('submit', async e => {
 
 clearBtn.addEventListener('click', () => {
   document.getElementById('ingredients').value = '';
-  document.getElementById('titleQuery').value = '';
-  document.getElementById('category').value = '';
+  document.getElementById('titleQuery').value  = '';
+  document.getElementById('category').value    = '';
   showDefault();
 });
 
 function showDefault() {
   searchDiv.classList.add('d-none');
-  defaultDiv.classList.remove('d-none');
+  mainContent.classList.remove('d-none');
 }
 </script>
 {% endblock %}

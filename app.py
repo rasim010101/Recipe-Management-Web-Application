@@ -6,6 +6,9 @@ from datetime import datetime
 from pathlib import Path
 from difflib import get_close_matches
 
+from dotenv import load_dotenv
+load_dotenv()   # загружает .env до всего остального
+
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, current_app
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash
@@ -170,66 +173,137 @@ def get_favorited_ids():
 
 @app.route('/')
 def index():
-    cats = Category.query.all()
-    recipes = Recipe.query.filter_by(is_deleted=False).order_by(Recipe.created_at.desc()).all()
-    return render_template('index.html', categories=cats, recipes=recipes, favorited_ids=get_favorited_ids())
+    # Categories with recipe count
+    cats_raw = Category.query.all()
+    cats = []
+    for c in cats_raw:
+        count = Recipe.query.filter_by(category_id=c.id, is_deleted=False).count()
+        cats.append({'obj': c, 'count': count})
+
+    # Latest 6 recipes
+    latest = Recipe.query.filter_by(is_deleted=False) \
+        .order_by(Recipe.created_at.desc()).limit(6).all()
+
+    # Top rated — recipes with avg rating, sorted desc
+    top_rated = db.session.query(Recipe) \
+        .join(Rating, Rating.recipe_id == Recipe.id) \
+        .filter(Recipe.is_deleted == False) \
+        .group_by(Recipe.id) \
+        .having(db.func.count(Rating.id) >= 1) \
+        .order_by(db.func.avg(Rating.value).desc()) \
+        .limit(6).all()
+
+    # Stats
+    total_recipes = Recipe.query.filter_by(is_deleted=False).count()
+    total_members = User.query.filter_by(is_active=True).count()
+    total_cats    = Category.query.count()
+
+    return render_template('index.html',
+                           categories=cats,
+                           latest=latest,
+                           top_rated=top_rated,
+                           total_recipes=total_recipes,
+                           total_members=total_members,
+                           total_cats=total_cats,
+                           favorited_ids=get_favorited_ids())
 
 
 @app.route('/recipes')
 def all_recipes():
     cats = Category.query.all()
-    cat_id = request.args.get('cat', type=int)
+    cat_id  = request.args.get('cat', type=int)
+    sort_by = request.args.get('sort', 'newest')  # newest | oldest | rating
+    page    = request.args.get('page', 1, type=int)
+    per_page = 12
+
     q = Recipe.query.filter_by(is_deleted=False)
     if cat_id:
         q = q.filter_by(category_id=cat_id)
-    recipes = q.order_by(Recipe.created_at.desc()).all()
-    active_cat = cat_id
-    return render_template('recipes_list.html', recipes=recipes, categories=cats, active_cat=active_cat, favorited_ids=get_favorited_ids())
+
+    if sort_by == 'oldest':
+        q = q.order_by(Recipe.created_at.asc())
+    elif sort_by == 'rating':
+        q = q.outerjoin(Rating, Rating.recipe_id == Recipe.id) \
+              .group_by(Recipe.id) \
+              .order_by(db.func.avg(Rating.value).desc().nullslast())
+    else:
+        q = q.order_by(Recipe.created_at.desc())
+
+    pagination = q.paginate(page=page, per_page=per_page, error_out=False)
+    return render_template('recipes_list.html',
+                           recipes=pagination.items,
+                           pagination=pagination,
+                           categories=cats,
+                           active_cat=cat_id,
+                           sort_by=sort_by,
+                           favorited_ids=get_favorited_ids())
 
 
 @app.route('/search', methods=['POST'])
 def search():
-    data = request.get_json() or request.form
-    ing_text = data.get('ingredients', '')
-    cat_id = data.get('category_id')
+    data        = request.get_json() or request.form
+    ing_text    = data.get('ingredients', '').strip()
+    cat_id      = data.get('category_id')
     title_query = data.get('title', '').strip()
-    user_ing = normalize_ingredients(ing_text)
+    user_ing    = normalize_ingredients(ing_text)
+
+    # --- Base query: only non-deleted ---
     q = Recipe.query.filter_by(is_deleted=False)
+
+    # --- Title filter via SQL LIKE (fast, DB-level) ---
     if title_query:
         q = q.filter(Recipe.title.ilike(f'%{title_query}%'))
+
+    # --- Category filter ---
     if cat_id:
         try:
             q = q.filter_by(category_id=int(cat_id))
-        except Exception:
+        except (ValueError, TypeError):
             pass
-    recipes = q.all()
+
+    # --- Ingredient pre-filter via SQL LIKE (narrows candidates before fuzzy) ---
+    if user_ing:
+        from sqlalchemy import or_
+        like_filters = [Recipe.ingredients.ilike(f'%{term}%') for term in user_ing]
+        q = q.filter(or_(*like_filters))
+
+    recipes = q.order_by(Recipe.created_at.desc()).limit(200).all()
     results = []
 
-    # If no ingredients given — return all recipes in the selected category
+    # --- If no ingredient query: return filtered set directly ---
     if not user_ing:
         for r in recipes:
             rec_ing = normalize_ingredients(r.ingredients)
+            cat_name = r.category.name if r.category else None
             results.append({
                 'id': r.id, 'title': r.title, 'ingredients': rec_ing,
-                'image_path': r.image_path, 'match_count': len(rec_ing), 'total': len(rec_ing), 'score': 1.0
+                'image_path': r.image_path, 'category': cat_name,
+                'match_count': len(rec_ing), 'total': len(rec_ing), 'score': 1.0
             })
         return jsonify(results)
 
+    # --- Weighted fuzzy scoring ---
     WEIGHTS = {'exact': 1.0, 'partial': 0.8, 'fuzzy': 0.5}
     for r in recipes:
         rec_ing = normalize_ingredients(r.ingredients)
-        matched = find_best_matches(rec_ing, user_ing)
-        match_count = sum(1 for _, _, t in matched if t in ('exact', 'partial', 'fuzzy'))
+        if not rec_ing:
+            continue
+        matched     = find_best_matches(rec_ing, user_ing)
+        match_count = sum(1 for _, _, t in matched if t != 'none')
         if match_count == 0:
             continue
-        weighted = sum(WEIGHTS.get(t, 0.0) for _, _, t in matched)
-        total = len(rec_ing) if rec_ing else 1
-        score = round((weighted / total), 3)
+        weighted  = sum(WEIGHTS.get(t, 0.0) for _, _, t in matched)
+        # Score: weighted matches / number of user ingredients queried
+        # (rewards recipes that match ALL queried ingredients, not just one)
+        score = round(weighted / max(len(user_ing), 1), 3)
+        cat_name = r.category.name if r.category else None
         results.append({
             'id': r.id, 'title': r.title, 'ingredients': rec_ing,
-            'image_path': r.image_path, 'match_count': match_count, 'total': total, 'score': score
+            'image_path': r.image_path, 'category': cat_name,
+            'match_count': match_count, 'total': len(rec_ing), 'score': score
         })
-    results = sorted(results, key=lambda x: (x['match_count'], x['score']), reverse=True)
+
+    results.sort(key=lambda x: (x['score'], x['match_count']), reverse=True)
     return jsonify(results)
 
 
@@ -267,11 +341,21 @@ def add_recipe():
         ingredients = request.form.get('ingredients', '').strip()
         instructions = request.form.get('instructions', '').strip()
         cat = request.form.get('category') or None
+        difficulty = request.form.get('difficulty') or None
+        prep_time = request.form.get('prep_time') or None
+        cook_time = request.form.get('cook_time') or None
+        servings = request.form.get('servings') or None
         image = request.files.get('image')
         img_path = save_file(image) if image else None
-        new = Recipe(title=title, ingredients=ingredients, instructions=instructions,
-                     image_path=img_path, author_id=current_user.id,
-                     category_id=int(cat) if cat else None)
+        new = Recipe(
+            title=title, ingredients=ingredients, instructions=instructions,
+            image_path=img_path, author_id=current_user.id,
+            category_id=int(cat) if cat else None,
+            difficulty=difficulty,
+            prep_time=int(prep_time) if prep_time else None,
+            cook_time=int(cook_time) if cook_time else None,
+            servings=int(servings) if servings else None,
+        )
         db.session.add(new)
         db.session.commit()
         flash('Recipe added', 'success')
@@ -293,10 +377,16 @@ def edit_recipe(recipe_id):
         r.instructions = request.form.get('instructions', '').strip()
         cat = request.form.get('category') or None
         r.category_id = int(cat) if cat else None
+        r.difficulty = request.form.get('difficulty') or None
+        prep_time = request.form.get('prep_time') or None
+        cook_time = request.form.get('cook_time') or None
+        servings  = request.form.get('servings') or None
+        r.prep_time = int(prep_time) if prep_time else None
+        r.cook_time = int(cook_time) if cook_time else None
+        r.servings  = int(servings) if servings else None
         image = request.files.get('image')
         if image:
             newp = save_file(image)
-            # удаляем старый файл (если относительный путь в db)
             if newp and r.image_path:
                 remove_file(r.image_path)
             r.image_path = newp
@@ -357,6 +447,33 @@ def trash_permanent(recipe_id):
     db.session.commit()
     flash('Recipe permanently deleted', 'success')
     return redirect(url_for('trash'))
+
+
+@app.route('/admin')
+@login_required
+def admin_panel():
+    if not current_user.is_admin():
+        flash('Access denied', 'danger')
+        return redirect(url_for('index'))
+    users   = User.query.order_by(User.created_at.desc()).all()
+    recipes = Recipe.query.order_by(Recipe.created_at.desc()).all()
+    return render_template('admin.html', users=users, recipes=recipes)
+
+
+@app.route('/admin/user/<int:user_id>/toggle', methods=['POST'])
+@login_required
+def admin_toggle_user(user_id):
+    if not current_user.is_admin():
+        flash('Access denied', 'danger')
+        return redirect(url_for('index'))
+    u = User.query.get_or_404(user_id)
+    if u.id == current_user.id:
+        flash("You can't disable yourself", 'warning')
+        return redirect(url_for('admin_panel'))
+    u.is_active = not u.is_active
+    db.session.commit()
+    flash(f'User {"enabled" if u.is_active else "disabled"}', 'success')
+    return redirect(url_for('admin_panel'))
 
 
 @app.route('/admin/categories/<int:cat_id>/delete', methods=['POST'])
@@ -460,6 +577,8 @@ def profile_settings():
                 flash('Username is already taken', 'warning')
                 return redirect(url_for('profile_settings'))
             current_user.username = new_username
+        bio = request.form.get('bio', '').strip()
+        current_user.bio = bio if bio else None
         avatar = request.files.get('avatar')
         if avatar and avatar.filename:
             path = save_file(avatar)

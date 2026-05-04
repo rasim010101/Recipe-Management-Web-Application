@@ -1,10 +1,191 @@
 {% extends "base.html" %}
+{% block title %}Admin Panel — RecipeHub{% endblock %}
 {% block content %}
-<h2>Все рецепты</h2>
-{% for r in recipes %}
-  <div class="d-flex align-items-center mb-2">
-    {% if r.image_path %}<img src="/{{ r.image_path }}" class="thumb me-2">{% endif %}
-    <div><a href="{{ url_for('recipe_page', recipe_id=r.id) }}">{{ r.title }}</a></div>
+
+<div class="page-header">
+  <h1 class="page-header-title">
+    🛠 Admin Panel
+  </h1>
+</div>
+
+<!-- Stats row -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3 col-6">
+    <div class="content-block" style="text-align:center;padding:1.25rem;">
+      <div style="font-size:2rem;font-weight:800;color:var(--accent);">{{ users|length }}</div>
+      <div style="font-size:.8rem;color:var(--text-muted);margin-top:.2rem;">Total Users</div>
+    </div>
   </div>
-{% endfor %}
+  <div class="col-md-3 col-6">
+    <div class="content-block" style="text-align:center;padding:1.25rem;">
+      <div style="font-size:2rem;font-weight:800;color:var(--text);">{{ recipes|length }}</div>
+      <div style="font-size:.8rem;color:var(--text-muted);margin-top:.2rem;">Total Recipes</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="content-block" style="text-align:center;padding:1.25rem;">
+      <div style="font-size:2rem;font-weight:800;color:var(--success);">
+        {{ users|selectattr('is_active','equalto',True)|list|length }}
+      </div>
+      <div style="font-size:.8rem;color:var(--text-muted);margin-top:.2rem;">Active Users</div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="content-block" style="text-align:center;padding:1.25rem;">
+      <div style="font-size:2rem;font-weight:800;color:var(--warning);">
+        {{ recipes|selectattr('is_deleted','equalto',True)|list|length }}
+      </div>
+      <div style="font-size:.8rem;color:var(--text-muted);margin-top:.2rem;">Deleted Recipes</div>
+    </div>
+  </div>
+</div>
+
+<!-- Users table -->
+<h2 class="section-title mb-3">👥 Users</h2>
+<div class="content-block mb-4" style="overflow-x:auto;">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Username</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Joined</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td style="color:var(--text-light);">#{{ u.id }}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:.5rem;">
+            {% if u.avatar_path %}
+              <img src="/{{ u.avatar_path }}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">
+            {% else %}
+              <div style="width:28px;height:28px;border-radius:50%;background:var(--accent-pale);
+                          color:var(--accent);font-weight:700;font-size:.75rem;
+                          display:flex;align-items:center;justify-content:center;">
+                {{ u.username[0].upper() }}
+              </div>
+            {% endif %}
+            <a href="{{ url_for('profile', username=u.username) }}"
+               style="font-weight:600;color:var(--text);">{{ u.username }}</a>
+          </div>
+        </td>
+        <td style="color:var(--text-muted);">{{ u.email }}</td>
+        <td>
+          {% if u.is_admin() %}
+            <span style="font-size:.72rem;font-weight:700;background:var(--accent);color:#fff;
+                         padding:.15rem .5rem;border-radius:999px;">Admin</span>
+          {% else %}
+            <span style="font-size:.72rem;color:var(--text-muted);">User</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if u.is_active %}
+            <span style="font-size:.72rem;font-weight:600;background:#DCFCE7;color:#15803D;
+                         padding:.15rem .5rem;border-radius:999px;">Active</span>
+          {% else %}
+            <span style="font-size:.72rem;font-weight:600;background:#FEF2F2;color:#DC2626;
+                         padding:.15rem .5rem;border-radius:999px;">Disabled</span>
+          {% endif %}
+        </td>
+        <td style="color:var(--text-muted);font-size:.82rem;">
+          {{ u.created_at.strftime('%d.%m.%Y') }}
+        </td>
+        <td>
+          {% if u.id != current_user.id %}
+          <form method="post" action="{{ url_for('admin_toggle_user', user_id=u.id) }}"
+                style="display:contents">
+            <button class="{{ 'btn-danger-soft' if u.is_active else 'btn-ghost' }}"
+                    style="font-size:.78rem;padding:.25rem .65rem;">
+              {{ 'Disable' if u.is_active else 'Enable' }}
+            </button>
+          </form>
+          {% else %}
+            <span style="font-size:.78rem;color:var(--text-light);">You</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Recent recipes -->
+<h2 class="section-title mb-3">📚 Recent Recipes</h2>
+<div class="content-block" style="overflow-x:auto;">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Title</th>
+        <th>Author</th>
+        <th>Category</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in recipes[:30] %}
+      <tr>
+        <td style="color:var(--text-light);">#{{ r.id }}</td>
+        <td>
+          {% if not r.is_deleted %}
+            <a href="{{ url_for('recipe_page', recipe_id=r.id) }}"
+               style="font-weight:600;color:var(--text);">{{ r.title }}</a>
+          {% else %}
+            <span style="color:var(--text-muted);text-decoration:line-through;">{{ r.title }}</span>
+          {% endif %}
+        </td>
+        <td style="color:var(--text-muted);">
+          {% if r.author %}{{ r.author.username }}{% else %}—{% endif %}
+        </td>
+        <td>
+          {% if r.category %}
+            <span class="cat-badge">{{ r.category.name }}</span>
+          {% else %}
+            <span style="color:var(--text-light);">—</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if r.is_deleted %}
+            <span style="font-size:.72rem;background:#FEF2F2;color:#DC2626;
+                         padding:.15rem .5rem;border-radius:999px;">Deleted</span>
+          {% else %}
+            <span style="font-size:.72rem;background:#DCFCE7;color:#15803D;
+                         padding:.15rem .5rem;border-radius:999px;">Active</span>
+          {% endif %}
+        </td>
+        <td style="color:var(--text-muted);font-size:.82rem;">
+          {{ r.created_at.strftime('%d.%m.%Y') }}
+        </td>
+        <td>
+          {% if not r.is_deleted %}
+          <form method="post" action="{{ url_for('delete_recipe', recipe_id=r.id) }}"
+                style="display:contents">
+            <button class="btn-danger-soft" style="font-size:.78rem;padding:.25rem .65rem;"
+                    onclick="return confirm('Move to trash?')">
+              🗑 Delete
+            </button>
+          </form>
+          {% else %}
+            <form method="post" action="{{ url_for('trash_permanent', recipe_id=r.id) }}"
+                  style="display:contents">
+              <button class="btn-danger-soft" style="font-size:.78rem;padding:.25rem .65rem;"
+                      onclick="return confirm('Permanently delete?')">
+                ✕ Purge
+              </button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
 {% endblock %}

@@ -1,0 +1,73 @@
+{# Reusable pagination macro
+   Usage examples:
+     index:        {{ render_pagination(pagination, 'index') }}
+     all_recipes:  {{ render_pagination(pagination, 'all_recipes', cat=active_cat, sort=sort_by) }}
+#}
+{% macro render_pagination(pagination, endpoint, cat=None, sort=None) %}
+{% if pagination and pagination.pages > 1 %}
+
+{# Helper: build URL for a given page number #}
+{% set _p = namespace() %}
+
+<nav class="pagination-wrap" aria-label="Page navigation">
+  <div class="pagination-inner">
+
+    {# --- Prev --- #}
+    {% if pagination.has_prev %}
+      {% if cat and sort %}
+        <a class="page-btn" href="{{ url_for(endpoint, page=pagination.prev_num, cat=cat, sort=sort) }}">‹</a>
+      {% elif cat %}
+        <a class="page-btn" href="{{ url_for(endpoint, page=pagination.prev_num, cat=cat) }}">‹</a>
+      {% elif sort %}
+        <a class="page-btn" href="{{ url_for(endpoint, page=pagination.prev_num, sort=sort) }}">‹</a>
+      {% else %}
+        <a class="page-btn" href="{{ url_for(endpoint, page=pagination.prev_num) }}">‹</a>
+      {% endif %}
+    {% else %}
+      <span class="page-btn disabled">‹</span>
+    {% endif %}
+
+    {# --- Page numbers --- #}
+    {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if p %}
+        {% if p == pagination.page %}
+          <span class="page-btn active">{{ p }}</span>
+        {% else %}
+          {% if cat and sort %}
+            <a class="page-btn" href="{{ url_for(endpoint, page=p, cat=cat, sort=sort) }}">{{ p }}</a>
+          {% elif cat %}
+            <a class="page-btn" href="{{ url_for(endpoint, page=p, cat=cat) }}">{{ p }}</a>
+          {% elif sort %}
+            <a class="page-btn" href="{{ url_for(endpoint, page=p, sort=sort) }}">{{ p }}</a>
+          {% else %}
+            <a class="page-btn" href="{{ url_for(endpoint, page=p) }}">{{ p }}</a>
+          {% endif %}
+        {% endif %}
+      {% else %}
+        <span class="page-btn dots">…</span>
+      {% endif %}
+    {% endfor %}
+
+    {# --- Next --- #}
+    {% if pagination.has_next %}
+      {% if cat and sort %}
+        <a class="page-btn" href="{{ url_for(endpoint, page=pagination.next_num, cat=cat, sort=sort) }}">›</a>
+      {% elif cat %}
+        <a class="page-btn" href="{{ url_for(endpoint, page=pagination.next_num, cat=cat) }}">›</a>
+      {% elif sort %}
+        <a class="page-btn" href="{{ url_for(endpoint, page=pagination.next_num, sort=sort) }}">›</a>
+      {% else %}
+        <a class="page-btn" href="{{ url_for(endpoint, page=pagination.next_num) }}">›</a>
+      {% endif %}
+    {% else %}
+      <span class="page-btn disabled">›</span>
+    {% endif %}
+
+  </div>
+  <div class="pagination-info">
+    Page {{ pagination.page }} of {{ pagination.pages }}
+    &nbsp;·&nbsp; {{ pagination.total }} total
+  </div>
+</nav>
+{% endif %}
+{% endmacro %}

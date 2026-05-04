@@ -1,41 +1,237 @@
 {% extends "base.html" %}
-{% block title %}{% if recipe %}Edit Recipe{% else %}Add Recipe{% endif %}{% endblock %}
+{% block title %}{% if recipe %}Edit Recipe{% else %}Add Recipe{% endif %} — RecipeHub{% endblock %}
 {% block content %}
 
-<h2>{% if recipe %}Edit Recipe{% else %}Add New Recipe{% endif %}</h2>
-<form method="post" enctype="multipart/form-data" class="mt-3" style="max-width:700px;">
-  <div class="mb-3">
-    <label class="form-label fw-bold">Title</label>
-    <input name="title" class="form-control" value="{{ recipe.title if recipe else '' }}" required>
-  </div>
-  <div class="mb-3">
-    <label class="form-label fw-bold">Ingredients <span class="text-muted fw-normal">(comma-separated)</span></label>
-    <input name="ingredients" class="form-control" value="{{ recipe.ingredients if recipe else '' }}" placeholder="egg, tomato, cheese" required>
-  </div>
-  <div class="mb-3">
-    <label class="form-label fw-bold">Instructions</label>
-    <textarea name="instructions" class="form-control" rows="6" required>{{ recipe.instructions if recipe else '' }}</textarea>
-  </div>
-  <div class="mb-3">
-    <label class="form-label fw-bold">Category</label>
-    <select name="category" class="form-select">
-      <option value="">— None —</option>
-      {% for c in categories %}
-        <option value="{{ c.id }}" {% if recipe and recipe.category_id==c.id %}selected{% endif %}>{{ c.name }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="mb-3">
-    <label class="form-label fw-bold">Photo <span class="text-muted fw-normal">(optional)</span></label>
-    <input type="file" name="image" class="form-control" accept="image/*">
-    {% if recipe and recipe.image_path %}
-      <img src="/{{ recipe.image_path }}" style="max-width:180px;margin-top:8px;" class="rounded">
-    {% endif %}
-  </div>
-  <div class="d-flex gap-2">
-    <button class="btn btn-success">Save</button>
-    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Cancel</a>
-  </div>
-</form>
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="form-card">
+      <h1 class="form-page-title">
+        {% if recipe %}✏ Edit <span>Recipe</span>{% else %}+ Add <span>Recipe</span>{% endif %}
+      </h1>
 
+      <form method="post" enctype="multipart/form-data" id="recipeForm" novalidate>
+
+        <!-- Title -->
+        <div class="form-group-modern">
+          <label class="form-label-modern">Recipe Title *</label>
+          <input name="title" id="fTitle" class="form-input"
+                 value="{{ recipe.title if recipe else '' }}"
+                 placeholder="e.g. Classic Carbonara" required>
+          <div class="field-error" id="fTitleErr">Title is required (min 3 characters).</div>
+        </div>
+
+        <!-- Ingredients -->
+        <div class="form-group-modern">
+          <label class="form-label-modern">
+            Ingredients *
+            <span style="font-weight:400;color:var(--text-muted);">— comma-separated</span>
+          </label>
+          <input name="ingredients" id="fIngr" class="form-input"
+                 value="{{ recipe.ingredients if recipe else '' }}"
+                 placeholder="egg, bacon, parmesan, black pepper" required>
+          <div class="field-error" id="fIngrErr">Please add at least one ingredient.</div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="form-group-modern">
+          <label class="form-label-modern">Instructions *</label>
+          <textarea name="instructions" id="fInstr" class="form-input" rows="7"
+                    placeholder="Describe the steps…" required
+                    style="resize:vertical;">{{ recipe.instructions if recipe else '' }}</textarea>
+          <div class="field-error" id="fInstrErr">Instructions are required.</div>
+        </div>
+
+        <div class="row g-3">
+          <!-- Category -->
+          <div class="col-md-6">
+            <div class="form-group-modern">
+              <label class="form-label-modern">Category</label>
+              <select name="category" class="form-select-modern">
+                <option value="">— None —</option>
+                {% for c in categories %}
+                  <option value="{{ c.id }}"
+                    {% if recipe and recipe.category_id == c.id %}selected{% endif %}>
+                    {{ c.name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- Difficulty -->
+          <div class="col-md-6">
+            <div class="form-group-modern">
+              <label class="form-label-modern">Difficulty</label>
+              <select name="difficulty" class="form-select-modern">
+                <option value="">— Select —</option>
+                {% for d in ['Easy', 'Medium', 'Hard'] %}
+                  <option value="{{ d }}"
+                    {% if recipe and recipe.difficulty == d %}selected{% endif %}>
+                    {{ d }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- Prep time -->
+          <div class="col-md-4">
+            <div class="form-group-modern">
+              <label class="form-label-modern">Prep time (min)</label>
+              <input name="prep_time" type="number" min="0" class="form-input"
+                     placeholder="15"
+                     value="{{ recipe.prep_time if recipe and recipe.prep_time else '' }}">
+            </div>
+          </div>
+
+          <!-- Cook time -->
+          <div class="col-md-4">
+            <div class="form-group-modern">
+              <label class="form-label-modern">Cook time (min)</label>
+              <input name="cook_time" type="number" min="0" class="form-input"
+                     placeholder="30"
+                     value="{{ recipe.cook_time if recipe and recipe.cook_time else '' }}">
+            </div>
+          </div>
+
+          <!-- Servings -->
+          <div class="col-md-4">
+            <div class="form-group-modern">
+              <label class="form-label-modern">Servings</label>
+              <input name="servings" type="number" min="1" class="form-input"
+                     placeholder="4"
+                     value="{{ recipe.servings if recipe and recipe.servings else '' }}">
+            </div>
+          </div>
+        </div>
+
+        <!-- Photo -->
+        <div class="form-group-modern mt-1">
+          <label class="form-label-modern">
+            Photo <span style="font-weight:400;color:var(--text-muted);">(optional)</span>
+          </label>
+
+          {% if recipe and recipe.image_path %}
+            <div class="mb-2">
+              <img src="/{{ recipe.image_path }}" id="imgPreview"
+                   style="max-width:220px;border-radius:var(--radius);border:1px solid var(--border);">
+            </div>
+          {% else %}
+            <div id="imgPreviewWrap" style="display:none;margin-bottom:.5rem;">
+              <img id="imgPreview"
+                   style="max-width:220px;border-radius:var(--radius);border:1px solid var(--border);">
+            </div>
+          {% endif %}
+
+          <label class="file-upload-wrap" id="fileDropZone">
+            <input type="file" name="image" accept="image/*" id="imageInput">
+            <div>
+              <div style="font-size:2rem;margin-bottom:.4rem;">📷</div>
+              <div style="font-weight:600;color:var(--text-muted);font-size:.9rem;">
+                Click to upload or drag & drop
+              </div>
+              <div style="font-size:.78rem;color:var(--text-light);margin-top:.2rem;">
+                PNG, JPG, GIF, WebP · max 5 MB
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <div class="d-flex gap-2 mt-2">
+          <button type="submit" class="btn-accent" style="min-width:130px;">
+            {% if recipe %}Save Changes{% else %}Publish Recipe{% endif %}
+          </button>
+          <a href="{{ url_for('index') }}" class="btn-ghost">Cancel</a>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ---- Form Validation ----
+document.getElementById('recipeForm').addEventListener('submit', function(e) {
+  let valid = true;
+
+  const title = document.getElementById('fTitle');
+  const titleOk = title.value.trim().length >= 3;
+  title.classList.toggle('is-invalid', !titleOk);
+  document.getElementById('fTitleErr').classList.toggle('visible', !titleOk);
+  if (!titleOk) valid = false;
+
+  const ingr = document.getElementById('fIngr');
+  const ingrOk = ingr.value.trim().length > 0;
+  ingr.classList.toggle('is-invalid', !ingrOk);
+  document.getElementById('fIngrErr').classList.toggle('visible', !ingrOk);
+  if (!ingrOk) valid = false;
+
+  const instr = document.getElementById('fInstr');
+  const instrOk = instr.value.trim().length >= 10;
+  instr.classList.toggle('is-invalid', !instrOk);
+  document.getElementById('fInstrErr').classList.toggle('visible', !instrOk);
+  if (!instrOk) valid = false;
+
+  if (!valid) { e.preventDefault(); return; }
+
+  // Disable submit to prevent double-submit
+  const btn = this.querySelector('[type=submit]');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+});
+
+// Clear error on input
+['fTitle','fIngr','fInstr'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', () => el.classList.remove('is-invalid'));
+});
+
+// ---- Image upload preview ----
+const imageInput = document.getElementById('imageInput');
+if (imageInput) {
+  imageInput.addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      let preview = document.getElementById('imgPreview');
+      let wrap    = document.getElementById('imgPreviewWrap');
+      if (preview) {
+        preview.src = e.target.result;
+        if (wrap) wrap.style.display = 'block';
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Drag & drop highlight
+const dropZone = document.getElementById('fileDropZone');
+if (dropZone) {
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.style.borderColor = 'var(--accent)';
+    dropZone.style.background  = 'var(--accent-light)';
+  });
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.style.borderColor = '';
+    dropZone.style.background  = '';
+  });
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.style.borderColor = '';
+    dropZone.style.background  = '';
+    const file = e.dataTransfer.files[0];
+    if (file && imageInput) {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      imageInput.files = dt.files;
+      imageInput.dispatchEvent(new Event('change'));
+    }
+  });
+}
+</script>
 {% endblock %}
