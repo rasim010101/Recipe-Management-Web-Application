@@ -183,6 +183,16 @@
       {% endif %}
     {% endwith %}
 
+    {# ── Email confirmation banner ── #}
+    {% if current_user.is_authenticated and not current_user.is_email_confirmed %}
+    <div class="email-confirm-banner">
+      <span>📧 Please confirm your email address to unlock all features.</span>
+      <a href="{{ url_for('auth.resend_confirmation') }}" class="email-confirm-link">
+        Resend confirmation →
+      </a>
+    </div>
+    {% endif %}
+
     <div class="page-enter">
       {% block content %}{% endblock %}
     </div>

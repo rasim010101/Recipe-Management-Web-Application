@@ -17,18 +17,39 @@
                placeholder="you@example.com" required autofocus>
         <div class="field-error" id="regEmailErr">Please enter a valid email address.</div>
       </div>
+
       <div class="form-group-modern">
         <label class="form-label-modern">Username</label>
         <input name="username" id="regUser" class="form-input"
                placeholder="How should we call you?" required minlength="3">
         <div class="field-error" id="regUserErr">Username must be at least 3 characters.</div>
       </div>
+
       <div class="form-group-modern">
         <label class="form-label-modern">Password</label>
-        <input name="password" type="password" id="regPwd" class="form-input"
-               placeholder="At least 6 characters" required minlength="6">
+        <div class="pwd-wrap">
+          <input name="password" type="password" id="regPwd" class="form-input"
+                 placeholder="At least 6 characters" required minlength="6">
+          <button type="button" class="pwd-toggle" data-target="regPwd" title="Show/hide">👁</button>
+        </div>
         <div class="field-error" id="regPwdErr">Password must be at least 6 characters.</div>
+        <!-- Strength bar -->
+        <div class="pwd-strength-bar" id="pwdStrengthBar">
+          <div class="pwd-strength-fill" id="pwdStrengthFill"></div>
+        </div>
+        <div class="pwd-strength-label" id="pwdStrengthLabel"></div>
       </div>
+
+      <div class="form-group-modern">
+        <label class="form-label-modern">Confirm Password</label>
+        <div class="pwd-wrap">
+          <input name="confirm_password" type="password" id="regPwdConfirm" class="form-input"
+                 placeholder="Repeat your password" required>
+          <button type="button" class="pwd-toggle" data-target="regPwdConfirm" title="Show/hide">👁</button>
+        </div>
+        <div class="field-error" id="regPwdConfirmErr">Passwords do not match.</div>
+      </div>
+
       <button type="submit" class="btn-submit" id="regBtn">Create Account →</button>
     </form>
 
@@ -43,37 +64,97 @@
 
 {% block scripts %}
 <script>
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// ── Password strength ────────────────────────────────────────────
+const pwdInput = document.getElementById('regPwd');
+const fill     = document.getElementById('pwdStrengthFill');
+const label    = document.getElementById('pwdStrengthLabel');
+
+const LEVELS = [
+  { label: 'Too short',  color: '#EF4444', pct: 15 },
+  { label: 'Weak',       color: '#F97316', pct: 35 },
+  { label: 'Fair',       color: '#F59E0B', pct: 60 },
+  { label: 'Good',       color: '#84CC16', pct: 80 },
+  { label: 'Strong',     color: '#22C55E', pct: 100 },
+];
+
+function pwdScore(v) {
+  if (v.length < 6) return 0;
+  let s = 1;
+  if (v.length >= 10) s++;
+  if (/[A-Z]/.test(v)) s++;
+  if (/[0-9]/.test(v)) s++;
+  if (/[^A-Za-z0-9]/.test(v)) s++;
+  return Math.min(s, 4);
+}
+
+pwdInput.addEventListener('input', () => {
+  const v = pwdInput.value;
+  if (!v) { fill.style.width = '0'; label.textContent = ''; return; }
+  const lvl = LEVELS[pwdScore(v)];
+  fill.style.width  = lvl.pct + '%';
+  fill.style.background = lvl.color;
+  label.textContent = lvl.label;
+  label.style.color = lvl.color;
+});
+
+// ── Show/hide password toggle ────────────────────────────────────
+document.querySelectorAll('.pwd-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const inp = document.getElementById(btn.dataset.target);
+    inp.type  = inp.type === 'password' ? 'text' : 'password';
+    btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+  });
+});
+
+// ── Form validation ──────────────────────────────────────────────
 document.getElementById('regForm').addEventListener('submit', function(e) {
   let valid = true;
 
-  const email = document.getElementById('regEmail');
-  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim());
+  const email   = document.getElementById('regEmail');
+  const user    = document.getElementById('regUser');
+  const pwd     = document.getElementById('regPwd');
+  const confirm = document.getElementById('regPwdConfirm');
+
+  const emailOk = emailRegex.test(email.value.trim());
   email.classList.toggle('is-invalid', !emailOk);
   document.getElementById('regEmailErr').classList.toggle('visible', !emailOk);
   if (!emailOk) valid = false;
 
-  const user = document.getElementById('regUser');
   const userOk = user.value.trim().length >= 3;
   user.classList.toggle('is-invalid', !userOk);
   document.getElementById('regUserErr').classList.toggle('visible', !userOk);
   if (!userOk) valid = false;
 
-  const pwd = document.getElementById('regPwd');
   const pwdOk = pwd.value.length >= 6;
   pwd.classList.toggle('is-invalid', !pwdOk);
   document.getElementById('regPwdErr').classList.toggle('visible', !pwdOk);
   if (!pwdOk) valid = false;
+
+  const matchOk = pwd.value === confirm.value && confirm.value.length > 0;
+  confirm.classList.toggle('is-invalid', !matchOk);
+  document.getElementById('regPwdConfirmErr').classList.toggle('visible', !matchOk);
+  if (!matchOk) valid = false;
 
   if (!valid) { e.preventDefault(); return; }
   document.getElementById('regBtn').textContent = 'Creating account…';
   document.getElementById('regBtn').disabled = true;
 });
 
-// Clear error on input
-['regEmail','regUser','regPwd'].forEach(id => {
+// Clear errors on input
+['regEmail','regUser','regPwd','regPwdConfirm'].forEach(id => {
   document.getElementById(id).addEventListener('input', function() {
     this.classList.remove('is-invalid');
   });
+});
+
+// Live confirm-match check
+document.getElementById('regPwdConfirm').addEventListener('input', function() {
+  const match = this.value === document.getElementById('regPwd').value;
+  this.classList.toggle('is-invalid', !match && this.value.length > 0);
+  document.getElementById('regPwdConfirmErr').classList.toggle('visible',
+    !match && this.value.length > 0);
 });
 </script>
 {% endblock %}

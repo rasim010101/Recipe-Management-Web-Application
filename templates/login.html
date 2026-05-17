@@ -18,9 +18,16 @@
         <div class="field-error" id="emailErr">Please enter a valid email address.</div>
       </div>
       <div class="form-group-modern">
-        <label class="form-label-modern">Password</label>
-        <input name="password" type="password" id="loginPwd" class="form-input"
-               placeholder="Your password" required>
+        <label class="form-label-modern" style="display:flex;justify-content:space-between;align-items:center;">
+          Password
+          <a href="{{ url_for('auth.forgot_password') }}"
+             style="font-size:.8rem;font-weight:500;color:var(--accent);">Forgot password?</a>
+        </label>
+        <div class="pwd-wrap">
+          <input name="password" type="password" id="loginPwd" class="form-input"
+                 placeholder="Your password" required>
+          <button type="button" class="pwd-toggle" data-target="loginPwd" title="Show/hide">👁</button>
+        </div>
         <div class="field-error" id="pwdErr">Password is required.</div>
       </div>
       <button type="submit" class="btn-submit" id="loginBtn">Log In →</button>
@@ -37,6 +44,15 @@
 
 {% block scripts %}
 <script>
+// Show/hide password
+document.querySelectorAll('.pwd-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const inp = document.getElementById(btn.dataset.target);
+    inp.type  = inp.type === 'password' ? 'text' : 'password';
+    btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+  });
+});
+
 document.getElementById('loginForm').addEventListener('submit', function(e) {
   let valid = true;
   const email = document.getElementById('loginEmail');
