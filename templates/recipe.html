@@ -33,6 +33,9 @@
           {{ recipe.category.name }}
         </span>
       {% endif %}
+      {% if recipe.author and recipe.author.is_admin() %}
+        <span class="staff-pick-badge">⭐ Staff Pick</span>
+      {% endif %}
       {% if recipe.author %}
         <a href="{{ url_for('profile', username=recipe.author.username) }}" class="recipe-meta-chip text-decoration-none">
           👤 {{ recipe.author.username }}

@@ -357,5 +357,17 @@
 </script>
 
 {% block scripts %}{% endblock %}
+
+<script>
+// Кликабельные карточки — нажатие на любую часть карточки открывает рецепт
+document.addEventListener('click', function(e) {
+  const card = e.target.closest('.recipe-card');
+  if (!card) return;
+  if (e.target.closest('a, button, form, input, select, textarea')) return;
+  const link = card.querySelector('.btn-view');
+  if (link) window.location.href = link.href;
+});
+</script>
+
 </body>
 </html>

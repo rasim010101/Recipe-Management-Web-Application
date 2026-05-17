@@ -464,6 +464,7 @@ kbd {
   height: 100%;
   display: flex;
   flex-direction: column;
+  cursor: pointer;
 }
 .recipe-card:hover {
   transform: translateY(-5px);
@@ -535,6 +536,21 @@ kbd {
 .match-high   { background: #DCFCE7; color: #15803D; }
 .match-medium { background: #FEF3C7; color: #B45309; }
 .match-low    { background: #F3F4F6; color: #6B7280; }
+
+/* ---------- Staff Pick badge ---------- */
+.staff-pick-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: .72rem;
+  font-weight: 700;
+  padding: .22rem .6rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+  color: #92400E;
+  border: 1px solid #F59E0B;
+  white-space: nowrap;
+}
 
 /* ---------- Category badge ---------- */
 .cat-badge {
@@ -903,6 +919,8 @@ kbd {
   line-height: 1.25;
   margin-bottom: .75rem;
   letter-spacing: -.4px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 .recipe-meta-row {
   display: flex;
@@ -950,8 +968,10 @@ kbd {
   border-bottom: 1px solid var(--border-light);
   font-size: .93rem;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: .5rem;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 .ingredients-list li:last-child { border-bottom: none; }
 .ingredients-list li::before {
@@ -970,6 +990,8 @@ kbd {
   line-height: 1.75;
   color: var(--text);
   margin: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* Star rating */

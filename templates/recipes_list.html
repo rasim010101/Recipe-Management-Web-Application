@@ -62,6 +62,9 @@
             {% if r.category %}
               <span class="cat-badge">{{ r.category.name }}</span>
             {% endif %}
+            {% if r.author and r.author.is_admin() %}
+              <span class="staff-pick-badge">⭐ Staff Pick</span>
+            {% endif %}
             {% if r.author %}
               <span>👤 <a href="{{ url_for('profile', username=r.author.username) }}"
                           style="color:var(--text-muted);text-decoration:none;">

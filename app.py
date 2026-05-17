@@ -332,11 +332,26 @@ def recipe_page(recipe_id):
                            rating_count=rating_count, comments=comments)
 
 
+MAX_RECIPES_PER_USER = 30   # лимит рецептов на одного пользователя
+
 @app.route('/add', methods=['GET', 'POST'])
 @login_required
 def add_recipe():
     cats = Category.query.all()
     if request.method == 'POST':
+        # Анти-спам: проверяем лимит рецептов
+        if not current_user.is_admin():
+            user_count = Recipe.query.filter_by(
+                author_id=current_user.id, is_deleted=False
+            ).count()
+            if user_count >= MAX_RECIPES_PER_USER:
+                flash(
+                    f'You have reached the limit of {MAX_RECIPES_PER_USER} recipes. '
+                    'Please delete some before adding new ones.',
+                    'warning'
+                )
+                return redirect(url_for('add_recipe'))
+
         title = request.form.get('title', '').strip()
         ingredients = request.form.get('ingredients', '').strip()
         instructions = request.form.get('instructions', '').strip()

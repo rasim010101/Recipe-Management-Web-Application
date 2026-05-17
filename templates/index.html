@@ -135,6 +135,9 @@
             {% if r.category %}
               <span class="cat-badge" style="font-size:.68rem;">{{ r.category.name }}</span>
             {% endif %}
+            {% if r.author and r.author.is_admin() %}
+              <span class="staff-pick-badge" style="font-size:.65rem;">⭐ Staff</span>
+            {% endif %}
           </div>
         </div>
         <div class="recipe-card-footer" style="padding:.65rem 1rem;">
@@ -180,6 +183,9 @@
               <span style="color:var(--warning);font-size:.82rem;font-weight:700;">
                 ★ {{ r.avg_rating }}
               </span>
+            {% endif %}
+            {% if r.author and r.author.is_admin() %}
+              <span class="staff-pick-badge" style="font-size:.65rem;">⭐ Staff</span>
             {% endif %}
           </div>
         </div>
