@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Notifications — RecipeHub{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-header-title">🔔 Notifications</h1>
+  {% if notifications %}
+  <button class="btn-ghost" id="markAllBtn" style="font-size:.85rem;">✓ Mark all read</button>
+  {% endif %}
+</div>
+
+{% if notifications %}
+<div class="notif-list">
+  {% for n in notifications %}
+  <div class="notif-item {{ 'notif-unread' if not n.is_read else '' }}" data-id="{{ n.id }}">
+    <div class="notif-icon">
+      {% if n.type == 'rating' %}⭐{% else %}💬{% endif %}
+    </div>
+    <div class="notif-body">
+      <p class="notif-message">{{ n.message }}</p>
+      <span class="notif-time">{{ n.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+    </div>
+    {% if n.recipe_id %}
+    <a href="{{ url_for('recipe_page', recipe_id=n.recipe_id) }}" class="btn-view" style="flex-shrink:0;">
+      View →
+    </a>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="margin-top:3rem;">
+  <div class="empty-state-icon">🔔</div>
+  <h5>No notifications yet</h5>
+  <p>When someone rates or comments on your recipes, you'll see it here.</p>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('markAllBtn')?.addEventListener('click', async () => {
+  await fetch('/notifications/read-all', { method: 'POST' });
+  document.querySelectorAll('.notif-unread').forEach(el => el.classList.remove('notif-unread'));
+  document.getElementById('markAllBtn').textContent = '✓ All read';
+  // Обновить счётчик в навбаре
+  const badge = document.getElementById('notifBadge');
+  if (badge) badge.style.display = 'none';
+});
+</script>
+{% endblock %}

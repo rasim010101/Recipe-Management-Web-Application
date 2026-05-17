@@ -17,7 +17,7 @@ from flask_migrate import Migrate
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
 
 # локальные модели/blueprints
-from entities import db, User, Recipe, Category, Favorite, Rating, Comment
+from entities import db, User, Recipe, Category, Favorite, Rating, Comment, Notification
 # auth blueprint должен быть в файле auth.py и использовать blueprint bp
 # мы импортируем и регистрируем ниже, чтобы avoid circular imports
 
@@ -72,6 +72,19 @@ def create_app():
 
 
 app = create_app()
+
+# -----------------------
+# Context processor — уведомления доступны во всех шаблонах
+# -----------------------
+@app.context_processor
+def inject_notifications():
+    if current_user.is_authenticated:
+        unread = Notification.query.filter_by(
+            user_id=current_user.id, is_read=False
+        ).count()
+        return dict(unread_notifications=unread)
+    return dict(unread_notifications=0)
+
 
 # -----------------------
 # Утилиты (файлы, нормализация)
@@ -540,11 +553,27 @@ def rate_recipe(recipe_id):
     value = data.get('value')
     if not isinstance(value, int) or not (1 <= value <= 5):
         return jsonify({'error': 'Invalid value'}), 400
+    is_new_rating = False
     existing = Rating.query.filter_by(user_id=current_user.id, recipe_id=recipe_id).first()
     if existing:
         existing.value = value
     else:
         db.session.add(Rating(user_id=current_user.id, recipe_id=recipe_id, value=value))
+        is_new_rating = True
+    db.session.flush()
+
+    # Уведомление автору рецепта (только при новой оценке, не при обновлении)
+    if is_new_rating and r.author_id and r.author_id != current_user.id:
+        stars = '★' * value + '☆' * (5 - value)
+        notif = Notification(
+            user_id      = r.author_id,
+            from_user_id = current_user.id,
+            recipe_id    = recipe_id,
+            type         = 'rating',
+            message      = f'{current_user.username} rated your recipe "{r.title[:40]}" — {stars} ({value}/5)',
+        )
+        db.session.add(notif)
+
     db.session.commit()
     avg, count = recipe_avg_rating(recipe_id)
     return jsonify({'avg': avg, 'count': count, 'user_rating': value})
@@ -556,12 +585,26 @@ def rate_recipe(recipe_id):
 @app.route('/recipe/<int:recipe_id>/comment', methods=['POST'])
 @login_required
 def add_comment(recipe_id):
-    Recipe.query.get_or_404(recipe_id)
+    r = Recipe.query.get_or_404(recipe_id)
     text = request.form.get('text', '').strip()
     if not text:
         flash('Comment cannot be empty', 'warning')
         return redirect(url_for('recipe_page', recipe_id=recipe_id))
     db.session.add(Comment(user_id=current_user.id, recipe_id=recipe_id, body=text))
+    db.session.flush()
+
+    # Уведомление автору рецепта (не себе)
+    if r.author_id and r.author_id != current_user.id:
+        preview = text[:60] + ('…' if len(text) > 60 else '')
+        notif = Notification(
+            user_id      = r.author_id,
+            from_user_id = current_user.id,
+            recipe_id    = recipe_id,
+            type         = 'comment',
+            message      = f'{current_user.username} commented on "{r.title[:40]}": {preview}',
+        )
+        db.session.add(notif)
+
     db.session.commit()
     return redirect(url_for('recipe_page', recipe_id=recipe_id) + '#comments')
 
@@ -669,6 +712,48 @@ def create_admin():
         db.session.add(admin)
         db.session.commit()
         print("Created admin:", email, "password: admin123")
+
+
+# -----------------------
+# Уведомления
+# -----------------------
+@app.route('/notifications')
+@login_required
+def notifications_page():
+    notifs = (Notification.query
+              .filter_by(user_id=current_user.id)
+              .order_by(Notification.created_at.desc())
+              .limit(50).all())
+    # пометить все как прочитанные при открытии страницы
+    Notification.query.filter_by(user_id=current_user.id, is_read=False).update({'is_read': True})
+    db.session.commit()
+    return render_template('notifications.html', notifications=notifs)
+
+
+@app.route('/notifications/count')
+@login_required
+def notifications_count():
+    count = Notification.query.filter_by(user_id=current_user.id, is_read=False).count()
+    return jsonify({'count': count})
+
+
+@app.route('/notifications/read-all', methods=['POST'])
+@login_required
+def notifications_read_all():
+    Notification.query.filter_by(user_id=current_user.id, is_read=False).update({'is_read': True})
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+@app.route('/notifications/<int:notif_id>/read', methods=['POST'])
+@login_required
+def notification_read(notif_id):
+    n = Notification.query.get_or_404(notif_id)
+    if n.user_id != current_user.id:
+        return jsonify({'error': 'Forbidden'}), 403
+    n.is_read = True
+    db.session.commit()
+    return jsonify({'ok': True})
 
 
 # -----------------------

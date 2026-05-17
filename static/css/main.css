@@ -454,6 +454,97 @@ kbd {
   color: rgba(255,255,255,.5);
 }
 
+/* ---------- Notification bell ---------- */
+.nav-notif-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: rgba(255,255,255,.65);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  text-decoration: none;
+}
+.nav-notif-btn:hover {
+  background: rgba(255,255,255,.08);
+  color: #fff;
+}
+.notif-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: var(--accent);
+  color: #fff;
+  font-size: .6rem;
+  font-weight: 700;
+  line-height: 1;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 .25rem;
+  border: 2px solid rgba(26,26,26,.97);
+}
+
+/* ---------- Notifications page ---------- */
+.notif-list {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  margin-top: 1rem;
+}
+.notif-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.notif-item:hover {
+  border-color: var(--accent-pale);
+  box-shadow: var(--shadow-sm);
+}
+.notif-unread {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-light);
+}
+.notif-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}
+.notif-body {
+  flex: 1;
+  min-width: 0;
+}
+.notif-message {
+  margin: 0 0 .25rem;
+  font-size: .9rem;
+  color: var(--text);
+  word-break: break-word;
+}
+.notif-time {
+  font-size: .75rem;
+  color: var(--text-light);
+}
+
 /* ---------- Recipe Cards ---------- */
 .recipe-card {
   background: var(--card-bg);

@@ -9,6 +9,7 @@ from entities.recipe_ingredient import RecipeIngredient
 from entities.favorite import Favorite
 from entities.rating import Rating
 from entities.comment import Comment
+from entities.notification import Notification
 
 __all__ = [
     'db',
@@ -23,4 +24,5 @@ __all__ = [
     'Favorite',
     'Rating',
     'Comment',
+    'Notification',
 ]
