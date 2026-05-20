@@ -1657,7 +1657,122 @@ kbd {
 }
 
 /* ---------- Responsive ---------- */
+
+/* === Navbar mobile (< lg = 992px) === */
 @media (max-width: 991px) {
+  .navbar {
+    height: auto !important;
+    min-height: var(--nav-height);
+  }
+  .navbar > .container {
+    height: auto !important;
+    min-height: var(--nav-height);
+    flex-wrap: wrap;
+    align-items: center;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .navbar-brand {
+    height: var(--nav-height);
+    display: flex;
+    align-items: center;
+  }
+  .navbar-toggler {
+    height: var(--nav-height);
+    padding: 0 .25rem;
+  }
+
+  /* Collapsed menu panel */
+  .navbar-collapse {
+    width: 100%;
+    background: #111111;
+    border-top: 1px solid rgba(255,255,255,.07);
+    padding: .5rem 0 .85rem;
+    margin: 0;
+  }
+
+  /* Both nav lists stacked */
+  .navbar .navbar-nav {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0 !important;
+    width: 100%;
+    margin: 0 !important;
+  }
+  .navbar .navbar-nav .nav-item { width: 100%; }
+
+  /* All nav links full-width */
+  .navbar .nav-link {
+    display: block !important;
+    padding: .6rem 1.1rem !important;
+    border-radius: 0 !important;
+    font-size: .92rem;
+  }
+  .navbar .nav-link:hover { background: rgba(255,255,255,.06); }
+
+  /* + Add Recipe button — full-width */
+  .nav-add-btn {
+    display: block !important;
+    margin: .25rem .75rem !important;
+    padding: .55rem 1rem !important;
+    border-radius: var(--radius-sm) !important;
+    text-align: center;
+  }
+
+  /* Search button */
+  .nav-search-btn {
+    width: calc(100% - 1.5rem);
+    margin: .1rem .75rem;
+    justify-content: flex-start;
+    border: none !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+    padding: .6rem .35rem !important;
+    font-size: .92rem;
+  }
+  .nav-search-hint { display: none; }
+
+  /* Bell — full-width row */
+  .nav-notif-btn {
+    width: 100%;
+    height: auto;
+    border-radius: 0;
+    padding: .6rem 1.1rem;
+    justify-content: flex-start;
+    gap: .55rem;
+  }
+  .nav-notif-btn::after {
+    content: 'Notifications';
+    font-size: .92rem;
+    font-weight: 500;
+    color: rgba(255,255,255,.75);
+  }
+  .notif-badge {
+    position: static;
+    margin-left: .25rem;
+  }
+
+  /* Dropdown on mobile: open inline */
+  .navbar .dropdown-menu {
+    position: static !important;
+    float: none;
+    background: rgba(255,255,255,.04);
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: .25rem 0;
+    margin: 0;
+  }
+  .navbar .dropdown-item {
+    color: rgba(255,255,255,.65);
+    padding: .5rem 2rem;
+    font-size: .88rem;
+    border-radius: 0;
+  }
+  .navbar .dropdown-item:hover { background: rgba(255,255,255,.07); color: #fff; }
+  .navbar .dropdown-divider { border-color: rgba(255,255,255,.07); margin: .3rem 0; }
+
+  /* Sidebar always static on tablet */
   .recipe-sidebar { position: static; }
 }
 
