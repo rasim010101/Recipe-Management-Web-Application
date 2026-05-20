@@ -8,34 +8,28 @@ class Recipe(db.Model):
 
     id          = db.Column(db.Integer, primary_key=True)
     title       = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.String(500), nullable=True)   # short summary
+    description = db.Column(db.String(500), nullable=True)
 
-    # kept as plain text for the fuzzy search algorithm
     ingredients  = db.Column(db.Text, nullable=False)
     instructions = db.Column(db.Text, nullable=False)
 
-    # cooking metadata
-    prep_time  = db.Column(db.Integer,     nullable=True)   # minutes
-    cook_time  = db.Column(db.Integer,     nullable=True)   # minutes
-    servings   = db.Column(db.Integer,     nullable=True)
-    difficulty = db.Column(db.String(20),  nullable=True)   # 'easy' | 'medium' | 'hard'
+    prep_time  = db.Column(db.Integer,    nullable=True)
+    cook_time  = db.Column(db.Integer,    nullable=True)
+    servings   = db.Column(db.Integer,    nullable=True)
+    difficulty = db.Column(db.String(20), nullable=True)
 
-    # media & foreign keys
     image_path  = db.Column(db.String(512), nullable=True)
     author_id   = db.Column(db.Integer, db.ForeignKey('users.id'),      nullable=True)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
 
-    # state flags
     is_published = db.Column(db.Boolean, default=True,  nullable=False)
     is_deleted   = db.Column(db.Boolean, default=False, nullable=False, index=True)
     deleted_at   = db.Column(db.DateTime, nullable=True)
     view_count   = db.Column(db.Integer,  default=0,    nullable=False)
 
-    # timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # relationships
     steps              = db.relationship('RecipeStep',       backref='recipe', lazy='dynamic',
                                          order_by='RecipeStep.step_number',
                                          cascade='all, delete-orphan')

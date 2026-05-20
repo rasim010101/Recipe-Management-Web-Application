@@ -1,4 +1,3 @@
-# app.py — готовый исправленный файл
 import os
 import re
 from uuid import uuid4
@@ -7,7 +6,7 @@ from pathlib import Path
 from difflib import get_close_matches
 
 from dotenv import load_dotenv
-load_dotenv()   # загружает .env до всего остального
+load_dotenv()
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, current_app
 from werkzeug.utils import secure_filename
@@ -17,26 +16,20 @@ from flask_migrate import Migrate
 from flask_mail import Mail
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
 
-# локальные модели/blueprints
 from entities import db, User, Recipe, Category, Favorite, Rating, Comment, Notification
-# auth blueprint должен быть в файле auth.py и использовать blueprint bp
-# мы импортируем и регистрируем ниже, чтобы avoid circular imports
 
-# ----- конфигурация путей -----
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 INSTANCE_DIR = os.path.join(BASEDIR, 'instance')
 DB_FILE = os.path.join(INSTANCE_DIR, 'recipes.sqlite')
 UPLOAD_FOLDER = os.path.join(BASEDIR, 'static', 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-MAX_CONTENT_LENGTH = 2 * 1024 * 1024  # 2 MB
+MAX_CONTENT_LENGTH = 2 * 1024 * 1024
 
-# убедимся, что instance и upload папки существуют (до любых операций с файлами)
 Path(INSTANCE_DIR).mkdir(parents=True, exist_ok=True)
 Path(UPLOAD_FOLDER).mkdir(parents=True, exist_ok=True)
 
 
 def create_app():
-    """Factory: создаёт и возвращает Flask app. Подходит для flask CLI и для запуска."""
     app = Flask(__name__, template_folder='templates', instance_path=INSTANCE_DIR, instance_relative_config=True)
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
     app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{DB_FILE}"
@@ -44,7 +37,6 @@ def create_app():
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
     app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
-    # Flask-Mail
     app.config['MAIL_SERVER']         = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
     app.config['MAIL_PORT']           = int(os.environ.get('MAIL_PORT', 587))
     app.config['MAIL_USE_TLS']        = os.environ.get('MAIL_USE_TLS', 'true').lower() == 'true'
@@ -53,18 +45,15 @@ def create_app():
     app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER',
                                                         os.environ.get('MAIL_USERNAME'))
 
-    # init extensions
     db.init_app(app)
     Migrate(app, db)
     mail = Mail(app)
     app.extensions['mail'] = mail
 
-    # Login manager init
     login_manager = LoginManager()
     login_manager.login_view = 'auth.login'
     login_manager.init_app(app)
 
-    # user_loader
     @login_manager.user_loader
     def load_user(user_id):
         try:
@@ -72,12 +61,10 @@ def create_app():
         except Exception:
             return None
 
-    # register auth blueprint (if exists)
     try:
         from auth import bp as auth_bp
         app.register_blueprint(auth_bp)
     except Exception as e:
-        # если blueprint отсутствует или импорт падает — выводим предупреждение, но приложение запускается
         print("Warning: auth blueprint not registered:", e)
 
     return app
@@ -85,9 +72,7 @@ def create_app():
 
 app = create_app()
 
-# -----------------------
-# Context processor — уведомления доступны во всех шаблонах
-# -----------------------
+
 @app.context_processor
 def inject_notifications():
     if current_user.is_authenticated:
@@ -98,9 +83,6 @@ def inject_notifications():
     return dict(unread_notifications=0)
 
 
-# -----------------------
-# Утилиты (файлы, нормализация)
-# -----------------------
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -115,13 +97,11 @@ def save_file(storage):
     new_name = f"{uuid4().hex}.{ext}"
     abs_path = os.path.join(app.config['UPLOAD_FOLDER'], new_name)
     storage.save(abs_path)
-    # возвращаем путь, который используется в шаблоне: /static/uploads/...
     rel = os.path.join('static', 'uploads', new_name).replace('\\', '/')
     return rel
 
 
 def remove_file(rel_path):
-    """Удаляет файл по относительному пути вида 'static/uploads/xxxx.png'."""
     if not rel_path:
         return
     try:
@@ -185,11 +165,7 @@ def find_best_matches(recipe_ings: list, user_ings: list, fuzzy_cutoff=0.75):
     return matched
 
 
-# -----------------------
-# Маршруты — endpoint'ы с осмысленными именами
-# -----------------------
 def get_favorited_ids():
-    """Returns a set of recipe IDs favorited by the current user."""
     if current_user.is_authenticated:
         rows = Favorite.query.filter_by(user_id=current_user.id).all()
         return {f.recipe_id for f in rows}
@@ -198,18 +174,15 @@ def get_favorited_ids():
 
 @app.route('/')
 def index():
-    # Categories with recipe count
     cats_raw = Category.query.all()
     cats = []
     for c in cats_raw:
         count = Recipe.query.filter_by(category_id=c.id, is_deleted=False).count()
         cats.append({'obj': c, 'count': count})
 
-    # Latest 6 recipes
     latest = Recipe.query.filter_by(is_deleted=False) \
         .order_by(Recipe.created_at.desc()).limit(6).all()
 
-    # Top rated — recipes with avg rating, sorted desc
     top_rated = db.session.query(Recipe) \
         .join(Rating, Rating.recipe_id == Recipe.id) \
         .filter(Recipe.is_deleted == False) \
@@ -218,7 +191,6 @@ def index():
         .order_by(db.func.avg(Rating.value).desc()) \
         .limit(6).all()
 
-    # Stats
     total_recipes = Recipe.query.filter_by(is_deleted=False).count()
     total_members = User.query.filter_by(is_active=True).count()
     total_cats    = Category.query.count()
@@ -237,7 +209,7 @@ def index():
 def all_recipes():
     cats = Category.query.all()
     cat_id  = request.args.get('cat', type=int)
-    sort_by = request.args.get('sort', 'newest')  # newest | oldest | rating
+    sort_by = request.args.get('sort', 'newest')
     page    = request.args.get('page', 1, type=int)
     per_page = 12
 
@@ -272,21 +244,17 @@ def search():
     title_query = data.get('title', '').strip()
     user_ing    = normalize_ingredients(ing_text)
 
-    # --- Base query: only non-deleted ---
     q = Recipe.query.filter_by(is_deleted=False)
 
-    # --- Title filter via SQL LIKE (fast, DB-level) ---
     if title_query:
         q = q.filter(Recipe.title.ilike(f'%{title_query}%'))
 
-    # --- Category filter ---
     if cat_id:
         try:
             q = q.filter_by(category_id=int(cat_id))
         except (ValueError, TypeError):
             pass
 
-    # --- Ingredient pre-filter via SQL LIKE (narrows candidates before fuzzy) ---
     if user_ing:
         from sqlalchemy import or_
         like_filters = [Recipe.ingredients.ilike(f'%{term}%') for term in user_ing]
@@ -295,7 +263,6 @@ def search():
     recipes = q.order_by(Recipe.created_at.desc()).limit(200).all()
     results = []
 
-    # --- If no ingredient query: return filtered set directly ---
     if not user_ing:
         for r in recipes:
             rec_ing = normalize_ingredients(r.ingredients)
@@ -307,7 +274,6 @@ def search():
             })
         return jsonify(results)
 
-    # --- Weighted fuzzy scoring ---
     WEIGHTS = {'exact': 1.0, 'partial': 0.8, 'fuzzy': 0.5}
     for r in recipes:
         rec_ing = normalize_ingredients(r.ingredients)
@@ -318,8 +284,6 @@ def search():
         if match_count == 0:
             continue
         weighted  = sum(WEIGHTS.get(t, 0.0) for _, _, t in matched)
-        # Score: weighted matches / number of user ingredients queried
-        # (rewards recipes that match ALL queried ingredients, not just one)
         score = round(weighted / max(len(user_ing), 1), 3)
         cat_name = r.category.name if r.category else None
         results.append({
@@ -344,7 +308,6 @@ def recipe_page(recipe_id):
     if r.is_deleted:
         return "Recipe not found", 404
 
-    # Считаем просмотр — не считаем автора
     if not (current_user.is_authenticated and current_user.id == r.author_id):
         r.view_count = (r.view_count or 0) + 1
         db.session.commit()
@@ -363,14 +326,13 @@ def recipe_page(recipe_id):
                            rating_count=rating_count, comments=comments)
 
 
-MAX_RECIPES_PER_USER = 30   # лимит рецептов на одного пользователя
+MAX_RECIPES_PER_USER = 30
 
 @app.route('/add', methods=['GET', 'POST'])
 @login_required
 def add_recipe():
     cats = Category.query.all()
     if request.method == 'POST':
-        # Анти-спам: проверяем лимит рецептов
         if not current_user.is_admin():
             user_count = Recipe.query.filter_by(
                 author_id=current_user.id, is_deleted=False
@@ -529,7 +491,6 @@ def category_delete(cat_id):
         flash('Access denied', 'danger')
         return redirect(url_for('index'))
     c = Category.query.get_or_404(cat_id)
-    # unlink recipes from this category
     Recipe.query.filter_by(category_id=cat_id).update({'category_id': None})
     db.session.delete(c)
     db.session.commit()
@@ -558,9 +519,6 @@ def categories():
     return render_template('categories.html', categories=cats)
 
 
-# -----------------------
-# Рейтинг рецептов
-# -----------------------
 @app.route('/recipe/<int:recipe_id>/rate', methods=['POST'])
 @login_required
 def rate_recipe(recipe_id):
@@ -580,7 +538,6 @@ def rate_recipe(recipe_id):
         is_new_rating = True
     db.session.flush()
 
-    # Уведомление автору рецепта (только при новой оценке, не при обновлении)
     if is_new_rating and r.author_id and r.author_id != current_user.id:
         stars = '★' * value + '☆' * (5 - value)
         notif = Notification(
@@ -597,9 +554,6 @@ def rate_recipe(recipe_id):
     return jsonify({'avg': avg, 'count': count, 'user_rating': value})
 
 
-# -----------------------
-# Комментарии
-# -----------------------
 @app.route('/recipe/<int:recipe_id>/comment', methods=['POST'])
 @login_required
 def add_comment(recipe_id):
@@ -611,7 +565,6 @@ def add_comment(recipe_id):
     db.session.add(Comment(user_id=current_user.id, recipe_id=recipe_id, body=text))
     db.session.flush()
 
-    # Уведомление автору рецепта (не себе)
     if r.author_id and r.author_id != current_user.id:
         preview = text[:60] + ('…' if len(text) > 60 else '')
         notif = Notification(
@@ -640,9 +593,6 @@ def delete_comment(comment_id):
     return redirect(url_for('recipe_page', recipe_id=recipe_id) + '#comments')
 
 
-# -----------------------
-# Настройки профиля
-# -----------------------
 @app.route('/profile/settings', methods=['GET', 'POST'])
 @login_required
 def profile_settings():
@@ -668,9 +618,6 @@ def profile_settings():
     return render_template('profile_settings.html')
 
 
-# -----------------------
-# Избранное
-# -----------------------
 @app.route('/recipe/<int:recipe_id>/favorite', methods=['POST'])
 @login_required
 def toggle_favorite(recipe_id):
@@ -695,9 +642,6 @@ def favorites():
     return render_template('favorites.html', recipes=recipes)
 
 
-# -----------------------
-# Профиль пользователя
-# -----------------------
 @app.route('/user/<username>')
 def profile(username):
     user = User.query.filter_by(username=username).first_or_404()
@@ -714,12 +658,8 @@ def profile(username):
                            avg_author=avg_author, total_ratings=total_ratings)
 
 
-# -----------------------
-# CLI helper: создать админа (flask create-admin)
-# -----------------------
 @app.cli.command("create-admin")
 def create_admin():
-    """Create default admin user: runs as `flask create-admin`"""
     with app.app_context():
         db.create_all()
         email = 'admin@example.com'
@@ -732,9 +672,6 @@ def create_admin():
         print("Created admin:", email, "password: admin123")
 
 
-# -----------------------
-# Уведомления
-# -----------------------
 @app.route('/notifications')
 @login_required
 def notifications_page():
@@ -742,7 +679,6 @@ def notifications_page():
               .filter_by(user_id=current_user.id)
               .order_by(Notification.created_at.desc())
               .limit(50).all())
-    # пометить все как прочитанные при открытии страницы
     Notification.query.filter_by(user_id=current_user.id, is_read=False).update({'is_read': True})
     db.session.commit()
     return render_template('notifications.html', notifications=notifs)
@@ -774,18 +710,9 @@ def notification_read(notif_id):
     return jsonify({'ok': True})
 
 
-# -----------------------
-# Никаких массовых create_all при импорте модуля!
-# -----------------------
-# Если хочешь инициализировать БД локально — используй:
-#   flask create-admin
-# или запусти интерактивно:
-#   python -c "from app import app; from models import db; with app.app_context(): db.create_all()"
-
 @app.route('/debug-mail')
 @login_required
 def debug_mail():
-    """Временный маршрут для диагностики email. Удали после исправления."""
     if not current_user.is_admin():
         return 'Admin only', 403
     import traceback
@@ -805,7 +732,7 @@ def debug_mail():
         msg = MailMsg(
             subject='RecipeHub test',
             recipients=[current_user.email],
-            html='<b>Test email from RecipeHub</b> — если ты видишь это, SMTP работает!'
+            html='<b>Test email from RecipeHub</b>'
         )
         mail_ext.send(msg)
         lines.append('<p style="color:green"><b>✓ Email sent to ' + current_user.email + '</b></p>')
@@ -815,5 +742,4 @@ def debug_mail():
 
 
 if __name__ == '__main__':
-    # локальный запуск dev-сервера
     app.run(debug=True)

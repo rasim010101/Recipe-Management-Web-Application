@@ -1,19 +1,15 @@
-"""
-Создаёт таблицу notifications если её ещё нет.
-Запускать ОДИН РАЗ на сервере:
-  python add_notifications_table.py
-"""
-import sqlite3, os, glob
+import sqlite3
+import glob
+
 
 def add_notifications_table(db_path):
-    print("== База данных:", db_path)
+    print("Database:", db_path)
     conn = sqlite3.connect(db_path)
-    cur  = conn.cursor()
+    cur = conn.cursor()
 
-    # Проверяем, есть ли уже таблица
     cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='notifications';")
     if cur.fetchone():
-        print("  Таблица notifications уже существует — ничего не делаем.")
+        print("  Table notifications already exists.")
         conn.close()
         return
 
@@ -32,15 +28,15 @@ def add_notifications_table(db_path):
     cur.execute("CREATE INDEX ix_notifications_user_id ON notifications(user_id);")
     cur.execute("CREATE INDEX ix_notifications_is_read ON notifications(is_read);")
     conn.commit()
-    print("  ✅ Таблица notifications создана.")
+    print("  Table notifications created.")
     conn.close()
 
-# Ищем recipes.sqlite в текущей папке и подпапках
+
 found = glob.glob('**/recipes.sqlite', recursive=True)
 if not found:
-    print("Файл recipes.sqlite не найден. Запусти скрипт из папки проекта.")
+    print("recipes.sqlite not found. Run this script from the project folder.")
 else:
     for db in found:
         add_notifications_table(db)
 
-print("Готово.")
+print("Done.")

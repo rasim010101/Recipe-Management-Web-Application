@@ -1,4 +1,3 @@
-# auth.py
 from datetime import datetime
 
 from flask import (Blueprint, render_template, request, redirect,
@@ -11,8 +10,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from entities import db, User
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
-
-# ── Token helpers ─────────────────────────────────────────────────────────────
 
 SALT_CONFIRM = 'email-confirm'
 SALT_RESET   = 'password-reset'
@@ -27,17 +24,13 @@ def generate_token(email: str, salt: str) -> str:
 
 
 def verify_token(token: str, salt: str, max_age: int = 86400):
-    """Returns email string on success, None on failure/expiry."""
     try:
         return _serializer().loads(token, salt=salt, max_age=max_age)
     except (BadSignature, SignatureExpired):
         return None
 
 
-# ── Email helper ──────────────────────────────────────────────────────────────
-
 def send_email(to: str, subject: str, html: str):
-    """Sends an email. Silently skips if MAIL_USERNAME is not configured."""
     if not current_app.config.get('MAIL_USERNAME'):
         current_app.logger.warning('MAIL_USERNAME not set — skipping email send.')
         return
@@ -94,8 +87,6 @@ def reset_email_html(reset_url: str) -> str:
     </div>"""
 
 
-# ── Register ──────────────────────────────────────────────────────────────────
-
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
@@ -107,7 +98,6 @@ def register():
         password = request.form.get('password', '')
         confirm  = request.form.get('confirm_password', '')
 
-        # — backend validation —
         errors = []
         import re
         if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', email):
@@ -129,15 +119,14 @@ def register():
             return redirect(url_for('auth.register'))
 
         user = User(
-            email         = email,
-            username      = username,
-            password_hash = generate_password_hash(password),
+            email              = email,
+            username           = username,
+            password_hash      = generate_password_hash(password),
             is_email_confirmed = False,
         )
         db.session.add(user)
         db.session.commit()
 
-        # Send confirmation email
         token       = generate_token(email, SALT_CONFIRM)
         confirm_url = url_for('auth.confirm_email', token=token, _external=True)
         send_email(email, 'Confirm your RecipeHub account',
@@ -150,11 +139,9 @@ def register():
     return render_template('register.html')
 
 
-# ── Confirm email ─────────────────────────────────────────────────────────────
-
 @bp.route('/confirm/<token>')
 def confirm_email(token):
-    email = verify_token(token, SALT_CONFIRM, max_age=86400)  # 24 h
+    email = verify_token(token, SALT_CONFIRM, max_age=86400)
     if not email:
         flash('The confirmation link is invalid or has expired.', 'danger')
         return redirect(url_for('index'))
@@ -175,8 +162,6 @@ def confirm_email(token):
     return redirect(url_for('index'))
 
 
-# ── Resend confirmation ────────────────────────────────────────────────────────
-
 @bp.route('/resend-confirmation')
 @login_required
 def resend_confirmation():
@@ -192,8 +177,6 @@ def resend_confirmation():
     flash('Confirmation email resent. Please check your inbox.', 'info')
     return redirect(url_for('index'))
 
-
-# ── Login ─────────────────────────────────────────────────────────────────────
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -221,8 +204,6 @@ def login():
     return render_template('login.html')
 
 
-# ── Logout ────────────────────────────────────────────────────────────────────
-
 @bp.route('/logout')
 @login_required
 def logout():
@@ -230,8 +211,6 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('index'))
 
-
-# ── Forgot password ───────────────────────────────────────────────────────────
 
 @bp.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
@@ -242,7 +221,6 @@ def forgot_password():
         email = request.form.get('email', '').strip().lower()
         user  = User.query.filter_by(email=email).first()
 
-        # Always show the same message to prevent user enumeration
         flash('If that email is registered, a reset link has been sent.', 'info')
 
         if user:
@@ -256,11 +234,9 @@ def forgot_password():
     return render_template('forgot_password.html')
 
 
-# ── Reset password ────────────────────────────────────────────────────────────
-
 @bp.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
-    email = verify_token(token, SALT_RESET, max_age=3600)  # 1 hour
+    email = verify_token(token, SALT_RESET, max_age=3600)
     if not email:
         flash('The password reset link is invalid or has expired.', 'danger')
         return redirect(url_for('auth.forgot_password'))
