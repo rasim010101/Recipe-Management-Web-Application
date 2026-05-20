@@ -14,6 +14,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash
 
 from flask_migrate import Migrate
+from flask_mail import Mail
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
 
 # локальные модели/blueprints
@@ -43,9 +44,20 @@ def create_app():
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
     app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
+    # Flask-Mail
+    app.config['MAIL_SERVER']         = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+    app.config['MAIL_PORT']           = int(os.environ.get('MAIL_PORT', 587))
+    app.config['MAIL_USE_TLS']        = os.environ.get('MAIL_USE_TLS', 'true').lower() == 'true'
+    app.config['MAIL_USERNAME']       = os.environ.get('MAIL_USERNAME')
+    app.config['MAIL_PASSWORD']       = os.environ.get('MAIL_PASSWORD')
+    app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER',
+                                                        os.environ.get('MAIL_USERNAME'))
+
     # init extensions
     db.init_app(app)
     Migrate(app, db)
+    mail = Mail(app)
+    app.extensions['mail'] = mail
 
     # Login manager init
     login_manager = LoginManager()
@@ -763,6 +775,38 @@ def notification_read(notif_id):
 #   flask create-admin
 # или запусти интерактивно:
 #   python -c "from app import app; from models import db; with app.app_context(): db.create_all()"
+
+@app.route('/debug-mail')
+@login_required
+def debug_mail():
+    """Временный маршрут для диагностики email. Удали после исправления."""
+    if not current_user.is_admin():
+        return 'Admin only', 403
+    import traceback
+    lines = []
+    cfg = {
+        'MAIL_SERVER':         app.config.get('MAIL_SERVER'),
+        'MAIL_PORT':           app.config.get('MAIL_PORT'),
+        'MAIL_USE_TLS':        app.config.get('MAIL_USE_TLS'),
+        'MAIL_USERNAME':       app.config.get('MAIL_USERNAME'),
+        'MAIL_PASSWORD':       '***' if app.config.get('MAIL_PASSWORD') else 'NOT SET',
+        'MAIL_DEFAULT_SENDER': app.config.get('MAIL_DEFAULT_SENDER'),
+    }
+    lines.append('<h3>Mail config:</h3><pre>' + '\n'.join(f'{k}: {v}' for k, v in cfg.items()) + '</pre>')
+    try:
+        from flask_mail import Mail, Message as MailMsg
+        mail_ext: Mail = app.extensions['mail']
+        msg = MailMsg(
+            subject='RecipeHub test',
+            recipients=[current_user.email],
+            html='<b>Test email from RecipeHub</b> — если ты видишь это, SMTP работает!'
+        )
+        mail_ext.send(msg)
+        lines.append('<p style="color:green"><b>✓ Email sent to ' + current_user.email + '</b></p>')
+    except Exception:
+        lines.append('<p style="color:red"><b>✗ Error:</b></p><pre>' + traceback.format_exc() + '</pre>')
+    return '<br>'.join(lines)
+
 
 if __name__ == '__main__':
     # локальный запуск dev-сервера
