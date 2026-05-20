@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Server Error — RecipeHub{% endblock %}
+{% block content %}
+
+<div style="text-align:center;padding:5rem 1rem;">
+  <div style="font-size:6rem;line-height:1;margin-bottom:1.5rem;">🔥</div>
+  <h1 style="font-size:5rem;font-weight:800;color:var(--accent);line-height:1;margin-bottom:.5rem;">500</h1>
+  <h2 style="font-size:1.5rem;font-weight:700;margin-bottom:.75rem;">Something went wrong</h2>
+  <p style="color:var(--text-muted);max-width:400px;margin:0 auto 2rem;">
+    The kitchen is temporarily on fire. Our team has been notified. Please try again in a few moments.
+  </p>
+  <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;">
+    <a href="{{ url_for('index') }}" class="btn-accent" style="text-decoration:none;padding:.65rem 1.5rem;">
+      ← Go Home
+    </a>
+    <button onclick="location.reload()" class="btn-ghost" style="padding:.65rem 1.5rem;cursor:pointer;">
+      Try Again
+    </button>
+  </div>
+</div>
+
+{% endblock %}

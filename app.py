@@ -16,6 +16,7 @@ from flask_migrate import Migrate
 from flask_mail import Mail
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
 
+from werkzeug.security import check_password_hash as _check_pw
 from entities import db, User, Recipe, Category, Favorite, Rating, Comment, Notification
 
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
@@ -66,6 +67,14 @@ def create_app():
         app.register_blueprint(auth_bp)
     except Exception as e:
         print("Warning: auth blueprint not registered:", e)
+
+    @app.errorhandler(404)
+    def page_not_found(e):
+        return render_template('404.html'), 404
+
+    @app.errorhandler(500)
+    def internal_error(e):
+        return render_template('500.html'), 500
 
     return app
 
@@ -321,9 +330,19 @@ def recipe_page(recipe_id):
             user_rating = ur.value if ur else None
     avg_rating, rating_count = recipe_avg_rating(recipe_id)
     comments = Comment.query.filter_by(recipe_id=recipe_id).order_by(Comment.created_at.asc()).all()
+
+    related = []
+    if r.category_id:
+        related = Recipe.query.filter(
+            Recipe.category_id == r.category_id,
+            Recipe.id != recipe_id,
+            Recipe.is_deleted == False
+        ).order_by(Recipe.created_at.desc()).limit(4).all()
+
     return render_template('recipe.html', recipe=r, is_favorited=is_favorited,
                            user_rating=user_rating, avg_rating=avg_rating,
-                           rating_count=rating_count, comments=comments)
+                           rating_count=rating_count, comments=comments,
+                           related=related)
 
 
 MAX_RECIPES_PER_USER = 30
@@ -597,6 +616,26 @@ def delete_comment(comment_id):
 @login_required
 def profile_settings():
     if request.method == 'POST':
+        action = request.form.get('action', 'profile')
+
+        if action == 'password':
+            current_pw = request.form.get('current_password', '')
+            new_pw     = request.form.get('new_password', '')
+            confirm_pw = request.form.get('confirm_password', '')
+            if not _check_pw(current_user.password_hash, current_pw):
+                flash('Current password is incorrect.', 'danger')
+                return redirect(url_for('profile_settings'))
+            if len(new_pw) < 6:
+                flash('New password must be at least 6 characters.', 'danger')
+                return redirect(url_for('profile_settings'))
+            if new_pw != confirm_pw:
+                flash('Passwords do not match.', 'danger')
+                return redirect(url_for('profile_settings'))
+            current_user.password_hash = generate_password_hash(new_pw)
+            db.session.commit()
+            flash('Password updated successfully.', 'success')
+            return redirect(url_for('profile_settings'))
+
         new_username = request.form.get('username', '').strip()
         if new_username and new_username != current_user.username:
             if User.query.filter_by(username=new_username).first():
@@ -708,37 +747,6 @@ def notification_read(notif_id):
     n.is_read = True
     db.session.commit()
     return jsonify({'ok': True})
-
-
-@app.route('/debug-mail')
-@login_required
-def debug_mail():
-    if not current_user.is_admin():
-        return 'Admin only', 403
-    import traceback
-    lines = []
-    cfg = {
-        'MAIL_SERVER':         app.config.get('MAIL_SERVER'),
-        'MAIL_PORT':           app.config.get('MAIL_PORT'),
-        'MAIL_USE_TLS':        app.config.get('MAIL_USE_TLS'),
-        'MAIL_USERNAME':       app.config.get('MAIL_USERNAME'),
-        'MAIL_PASSWORD':       '***' if app.config.get('MAIL_PASSWORD') else 'NOT SET',
-        'MAIL_DEFAULT_SENDER': app.config.get('MAIL_DEFAULT_SENDER'),
-    }
-    lines.append('<h3>Mail config:</h3><pre>' + '\n'.join(f'{k}: {v}' for k, v in cfg.items()) + '</pre>')
-    try:
-        from flask_mail import Mail, Message as MailMsg
-        mail_ext: Mail = app.extensions['mail']
-        msg = MailMsg(
-            subject='RecipeHub test',
-            recipients=[current_user.email],
-            html='<b>Test email from RecipeHub</b>'
-        )
-        mail_ext.send(msg)
-        lines.append('<p style="color:green"><b>✓ Email sent to ' + current_user.email + '</b></p>')
-    except Exception:
-        lines.append('<p style="color:red"><b>✗ Error:</b></p><pre>' + traceback.format_exc() + '</pre>')
-    return '<br>'.join(lines)
 
 
 if __name__ == '__main__':

@@ -66,6 +66,9 @@
           </button>
         </form>
       {% endif %}
+      <button class="btn-ghost" id="shareBtn" onclick="shareRecipe()" title="Copy link">
+        🔗 Share
+      </button>
       {% if current_user.is_authenticated and (current_user.id == recipe.author_id or current_user.is_admin()) %}
         <a class="btn-ghost" href="{{ url_for('edit_recipe', recipe_id=recipe.id) }}">✏ Edit</a>
         <form method="post" action="{{ url_for('delete_recipe', recipe_id=recipe.id) }}" style="display:contents">
@@ -173,6 +176,34 @@
 
   </div><!-- /col-lg-8 -->
 
+  <!-- RELATED RECIPES (shown only on mobile, full-width) -->
+  {% if related %}
+  <div class="col-12 d-lg-none">
+    <div class="content-block">
+      <div class="content-block-header">🍴 More from this category</div>
+      <div class="content-block-body p-2">
+        <div class="row g-2">
+          {% for rr in related %}
+          <div class="col-6">
+            <a href="{{ url_for('recipe_page', recipe_id=rr.id) }}"
+               class="related-card text-decoration-none">
+              <div class="related-card-img">
+                {% if rr.image_path %}
+                  <img src="/{{ rr.image_path }}" alt="{{ rr.title }}">
+                {% else %}
+                  <span>🍽</span>
+                {% endif %}
+              </div>
+              <div class="related-card-title">{{ rr.title }}</div>
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- SIDEBAR -->
   <div class="col-lg-4">
     <div class="recipe-sidebar">
@@ -275,6 +306,29 @@
       </div>
       {% endif %}
 
+      {% if related %}
+      <div class="content-block mt-3">
+        <div class="content-block-header">🍴 More like this</div>
+        <div class="content-block-body" style="padding:.75rem;">
+          <div class="d-flex flex-column gap-2">
+            {% for rr in related %}
+            <a href="{{ url_for('recipe_page', recipe_id=rr.id) }}"
+               class="related-card text-decoration-none">
+              <div class="related-card-img">
+                {% if rr.image_path %}
+                  <img src="/{{ rr.image_path }}" alt="{{ rr.title }}">
+                {% else %}
+                  <span>🍽</span>
+                {% endif %}
+              </div>
+              <div class="related-card-title">{{ rr.title }}</div>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
     </div>
   </div><!-- /col-lg-4 -->
 </div>
@@ -282,6 +336,27 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+function shareRecipe() {
+  const url = window.location.href;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = document.getElementById('shareBtn');
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      btn.style.borderColor = 'var(--success)';
+      btn.style.color = 'var(--success)';
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.style.borderColor = '';
+        btn.style.color = '';
+      }, 2000);
+    });
+  } else {
+    prompt('Copy this link:', url);
+  }
+}
+</script>
 <script>
 const widget = document.getElementById('starWidget');
 if (widget) {

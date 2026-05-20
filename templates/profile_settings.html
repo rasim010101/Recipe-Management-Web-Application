@@ -4,14 +4,13 @@
 
 <div class="row justify-content-center">
   <div class="col-lg-6 col-md-8">
-    <div class="form-card">
-      <h1 class="form-page-title">
-        ⚙ Profile <span>Settings</span>
-      </h1>
+
+    <div class="form-card mb-4">
+      <h1 class="form-page-title">⚙ Profile <span>Settings</span></h1>
 
       <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="action" value="profile">
 
-        <!-- Avatar -->
         <div class="form-group-modern">
           <label class="form-label-modern">Profile Photo</label>
           <div class="d-flex align-items-center gap-3">
@@ -22,7 +21,7 @@
             {% else %}
               <div id="avatarPreview"
                    style="width:72px;height:72px;border-radius:50%;background:var(--accent);
-                          color:#fff;font-size:1.75rem;font-weight:800;
+                          color:#fff;font-size:1.75rem;font-weight:800;flex-shrink:0;
                           display:flex;align-items:center;justify-content:center;
                           border:3px solid var(--accent-pale);">
                 {{ current_user.username[0].upper() }}
@@ -31,8 +30,7 @@
             <div>
               <label class="btn-ghost" style="cursor:pointer;display:inline-block;">
                 📷 Choose photo
-                <input type="file" name="avatar" accept="image/*" id="avatarInput"
-                       style="display:none;">
+                <input type="file" name="avatar" accept="image/*" id="avatarInput" style="display:none;">
               </label>
               <div style="font-size:.78rem;color:var(--text-muted);margin-top:.35rem;">
                 JPG, PNG, GIF · max 2 MB
@@ -41,16 +39,15 @@
           </div>
         </div>
 
-        <!-- Username -->
         <div class="form-group-modern">
           <label class="form-label-modern">Username</label>
-          <input name="username" class="form-input"
-                 value="{{ current_user.username }}" required>
+          <input name="username" class="form-input" value="{{ current_user.username }}" required>
         </div>
 
-        <!-- Bio -->
         <div class="form-group-modern">
-          <label class="form-label-modern">Bio <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+          <label class="form-label-modern">
+            Bio <span style="color:var(--text-muted);font-weight:400">(optional)</span>
+          </label>
           <textarea name="bio" class="form-input" rows="3"
                     placeholder="Tell something about yourself…"
                     style="resize:vertical;">{{ current_user.bio or '' }}</textarea>
@@ -60,9 +57,51 @@
           <button type="submit" class="btn-accent" style="flex:1;">Save Changes</button>
           <a href="{{ url_for('profile', username=current_user.username) }}" class="btn-ghost">Cancel</a>
         </div>
-
       </form>
     </div>
+
+    <div class="form-card">
+      <h2 style="font-size:1.15rem;font-weight:700;margin-bottom:1.25rem;display:flex;align-items:center;gap:.5rem;">
+        🔒 Change <span style="color:var(--accent)">Password</span>
+      </h2>
+
+      <form method="post" id="pwdForm">
+        <input type="hidden" name="action" value="password">
+
+        <div class="form-group-modern">
+          <label class="form-label-modern">Current Password</label>
+          <div class="pwd-wrap">
+            <input name="current_password" type="password" id="curPwd" class="form-input"
+                   placeholder="Enter current password" required>
+            <button type="button" class="pwd-toggle" data-target="curPwd">👁</button>
+          </div>
+        </div>
+
+        <div class="form-group-modern">
+          <label class="form-label-modern">New Password</label>
+          <div class="pwd-wrap">
+            <input name="new_password" type="password" id="newPwd" class="form-input"
+                   placeholder="At least 6 characters" required>
+            <button type="button" class="pwd-toggle" data-target="newPwd">👁</button>
+          </div>
+          <div class="pwd-strength-bar"><div class="pwd-strength-fill" id="strengthFill"></div></div>
+          <div class="pwd-strength-label" id="strengthLabel"></div>
+        </div>
+
+        <div class="form-group-modern">
+          <label class="form-label-modern">Confirm New Password</label>
+          <div class="pwd-wrap">
+            <input name="confirm_password" type="password" id="confPwd" class="form-input"
+                   placeholder="Repeat new password" required>
+            <button type="button" class="pwd-toggle" data-target="confPwd">👁</button>
+          </div>
+          <div class="field-error" id="confErr">Passwords do not match.</div>
+        </div>
+
+        <button type="submit" class="btn-accent" style="width:100%;">Update Password</button>
+      </form>
+    </div>
+
   </div>
 </div>
 
@@ -76,7 +115,6 @@ document.getElementById('avatarInput').addEventListener('change', function () {
   const reader = new FileReader();
   reader.onload = e => {
     const wrap = document.getElementById('avatarPreview');
-    // Replace with img tag if it was a div
     const img = document.createElement('img');
     img.id = 'avatarPreview';
     img.src = e.target.result;
@@ -85,6 +123,58 @@ document.getElementById('avatarInput').addEventListener('change', function () {
     wrap.replaceWith(img);
   };
   reader.readAsDataURL(file);
+});
+
+document.querySelectorAll('.pwd-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const inp = document.getElementById(btn.dataset.target);
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+  });
+});
+
+const newPwd = document.getElementById('newPwd');
+const fill   = document.getElementById('strengthFill');
+const label  = document.getElementById('strengthLabel');
+const levels = [
+  { up: 0,  color: '',        text: '' },
+  { up: 1,  color: '#EF4444', text: 'Too short' },
+  { up: 2,  color: '#F97316', text: 'Weak' },
+  { up: 3,  color: '#F59E0B', text: 'Fair' },
+  { up: 4,  color: '#22C55E', text: 'Good' },
+  { up: 5,  color: '#16A34A', text: 'Strong' },
+];
+function getStrength(v) {
+  let s = 0;
+  if (v.length >= 6)  s++;
+  if (v.length >= 10) s++;
+  if (/[A-Z]/.test(v)) s++;
+  if (/[0-9]/.test(v)) s++;
+  if (/[^A-Za-z0-9]/.test(v)) s++;
+  return s;
+}
+newPwd.addEventListener('input', () => {
+  const v = newPwd.value;
+  if (!v) { fill.style.width = '0'; label.textContent = ''; return; }
+  const s = getStrength(v);
+  const l = levels[s] || levels[1];
+  fill.style.width = (s * 20) + '%';
+  fill.style.background = l.color;
+  label.textContent = l.text;
+  label.style.color = l.color;
+});
+
+document.getElementById('pwdForm').addEventListener('submit', function(e) {
+  const conf = document.getElementById('confPwd');
+  const err  = document.getElementById('confErr');
+  if (newPwd.value !== conf.value) {
+    err.classList.add('visible');
+    conf.classList.add('is-invalid');
+    e.preventDefault();
+  } else {
+    err.classList.remove('visible');
+    conf.classList.remove('is-invalid');
+  }
 });
 </script>
 {% endblock %}
