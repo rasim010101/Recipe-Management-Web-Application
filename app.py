@@ -343,6 +343,12 @@ def recipe_page(recipe_id):
     r = Recipe.query.get_or_404(recipe_id)
     if r.is_deleted:
         return "Recipe not found", 404
+
+    # Считаем просмотр — не считаем автора
+    if not (current_user.is_authenticated and current_user.id == r.author_id):
+        r.view_count = (r.view_count or 0) + 1
+        db.session.commit()
+
     is_favorited = False
     user_rating = None
     if current_user.is_authenticated:

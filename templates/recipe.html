@@ -42,6 +42,7 @@
         </a>
       {% endif %}
       <span class="recipe-meta-chip">📅 {{ recipe.created_at.strftime('%d.%m.%Y') }}</span>
+      <span class="recipe-meta-chip">👁 {{ recipe.view_count or 0 }} {{ 'view' if (recipe.view_count or 0) == 1 else 'views' }}</span>
       {% if recipe.prep_time %}
         <span class="recipe-meta-chip">⏱ Prep {{ recipe.prep_time }} min</span>
       {% endif %}

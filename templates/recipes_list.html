@@ -78,6 +78,7 @@
         <div class="recipe-card-footer">
           <small style="color:var(--text-light);font-size:.75rem;">
             {{ r.created_at.strftime('%d.%m.%Y') }}
+            &nbsp;·&nbsp; 👁 {{ r.view_count or 0 }}
           </small>
           <a href="{{ url_for('recipe_page', recipe_id=r.id) }}" class="btn-view">View →</a>
         </div>
